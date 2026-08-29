@@ -1736,7 +1736,10 @@ async def analyze_complete(
         user_id = int(user_data.get("id", 0))
 
         if user_id and not db.can_analyse(user_id):
-            raise HTTPException(status_code=403, detail="Доступ только после оплаты. Оплатите анализ или подписку в боте @FaceLabs_bot.")
+            raise HTTPException(
+                status_code=402,
+                detail="Для анализа нужно купить пакет анализов в боте @FaceLabs_bot. Стоимость — от 50₽ (по цене батончика 🍫).",
+            )
 
     front_bytes = await front.read()
     front_image = decode_upload(front_bytes)

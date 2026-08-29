@@ -49,19 +49,19 @@ CHANNEL_USERNAME = os.environ.get("FACE_LAB_CHANNEL", "@FACELABS1")
 
 WEBAPP_URL = os.environ.get("FACE_LAB_WEBAPP_URL", "")
 
-# Prices in Telegram Stars (1 star ≈ 2 rubles)
+# Prices in Telegram Stars (1 star ≈ 2 rubles → 50₽ ≈ 25⭐)
 PRICES = {
-    "analysis":    LabeledPrice("1 анализ", 50),
-    "sub_3d":      LabeledPrice("Подписка 3 дня", 100),
-    "sub_7d":      LabeledPrice("Подписка 1 неделя", 300),
-    "sub_30d":     LabeledPrice("Подписка 1 месяц", 500),
+    "pack_1":   LabeledPrice("1 анализ", 25),
+    "pack_3":   LabeledPrice("3 анализа", 60),
+    "pack_5":   LabeledPrice("5 анализов", 100),
+    "pack_10":  LabeledPrice("10 анализов", 175),
 }
 
-DURATIONS = {
-    "analysis": 0,
-    "sub_3d": 3 * 86400,
-    "sub_7d": 7 * 86400,
-    "sub_30d": 30 * 86400,
+PACK_CREDITS = {
+    "pack_1":   1,
+    "pack_3":   3,
+    "pack_5":   5,
+    "pack_10":  10,
 }
 
 # ---------------------------------------------------------------------------
@@ -132,27 +132,22 @@ async def check_channel_member(user_id: int, context: ContextTypes.DEFAULT_TYPE)
 # Keyboard builders
 # ---------------------------------------------------------------------------
 
-def main_menu_keyboard(has_access: bool) -> InlineKeyboardMarkup:
+def main_menu_keyboard(credits: int = 0) -> InlineKeyboardMarkup:
     webapp_url = _webapp_url()
     buttons = []
-    if has_access:
-        if webapp_url.startswith("https://"):
-            buttons.append(
-                [InlineKeyboardButton("🔍 Запустить анализ лица", web_app=WebAppInfo(url=webapp_url))]
-            )
-        else:
-            buttons.append(
-                [InlineKeyboardButton("🔍 Запустить анализ лица", url=webapp_url)]
-            )
+    # Always show the WebApp launch button
+    if webapp_url.startswith("https://"):
+        buttons.append(
+            [InlineKeyboardButton("🔍 Запустить анализ лица", web_app=WebAppInfo(url=webapp_url))]
+        )
     else:
+        buttons.append(
+            [InlineKeyboardButton("🔍 Запустить анализ лица", url=webapp_url)]
+        )
+
+    if credits <= 0:
         buttons.append([
-            InlineKeyboardButton("💎 Купить 1 анализ — 50⭐", callback_data="pay:analysis"),
-        ])
-        buttons.append([
-            InlineKeyboardButton("📦 Оформить подписку", callback_data="sub_menu"),
-        ])
-        buttons.append([
-            InlineKeyboardButton("💰 Все тарифы", callback_data="prices"),
+            InlineKeyboardButton("💎 Купить анализы", callback_data="prices"),
         ])
 
     buttons.append([
@@ -161,22 +156,12 @@ def main_menu_keyboard(has_access: bool) -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(buttons)
 
 
-def sub_menu_keyboard() -> InlineKeyboardMarkup:
-    return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💎 1 анализ — 50⭐", callback_data="pay:analysis")],
-        [InlineKeyboardButton("🗓 3 дня — 100⭐", callback_data="pay:sub_3d")],
-        [InlineKeyboardButton("📅 Неделя — 300⭐", callback_data="pay:sub_7d")],
-        [InlineKeyboardButton("📆 Месяц — 500⭐", callback_data="pay:sub_30d")],
-        [InlineKeyboardButton("◀️ Назад", callback_data="back_main")],
-    ])
-
-
 def prices_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup([
-        [InlineKeyboardButton("💎 1 анализ — 50⭐ (≈100₽)", callback_data="pay:analysis")],
-        [InlineKeyboardButton("🗓 Подписка 3 дня — 100⭐ (≈200₽)", callback_data="pay:sub_3d")],
-        [InlineKeyboardButton("📅 Подписка неделя — 300⭐ (≈600₽)", callback_data="pay:sub_7d")],
-        [InlineKeyboardButton("📆 Подписка месяц — 500⭐ (≈1000₽)", callback_data="pay:sub_30d")],
+        [InlineKeyboardButton("1️⃣  1 анализ — 25⭐ (≈50₽)", callback_data="pay:pack_1")],
+        [InlineKeyboardButton("3️⃣  3 анализа — 60⭐ (≈120₽) 💰 выгода 20%", callback_data="pay:pack_3")],
+        [InlineKeyboardButton("5️⃣  5 анализов — 100⭐ (≈200₽) 💰 выгода 20%", callback_data="pay:pack_5")],
+        [InlineKeyboardButton("🔟  10 анализов — 175⭐ (≈350₽) 🔥 выгода 30%", callback_data="pay:pack_10")],
         [InlineKeyboardButton("◀️ Назад", callback_data="back_main")],
     ])
 
@@ -201,39 +186,27 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    has_access = db.can_analyse(user.id)
-    subscribed = db.is_subscribed(user.id)
-    has_credit = db.has_paid_credit(user.id)
+    user_info = db.get_user(user.id) or {}
+    credits = user_info.get("paid_analyses", 0)
 
-    if subscribed:
-        info = db.get_subscription_info(user.id)
-        remaining = int(info["expires_at"] - time.time())
-        days = max(1, remaining // 86400)
+    if credits > 0:
         text = (
             f"👋 Привет, <b>{user.first_name}</b>!\n\n"
-            f"📦 <b>Активная подписка</b> — ещё {days} дн.\n\n"
-            f"Нажмите «🔍 Запустить анализ лица» для перехода к сканеру."
-        )
-    elif has_credit:
-        user_info = db.get_user(user.id) or {}
-        credits = user_info.get("paid_analyses", 0)
-        text = (
-            f"👋 Привет, <b>{user.first_name}</b>!\n\n"
-            f"💎 У вас оплачено анализов: <b>{credits}</b>\n\n"
+            f"💎 Доступно анализов: <b>{credits}</b>\n\n"
             f"Нажмите «🔍 Запустить анализ лица» для перехода к сканеру."
         )
     else:
         text = (
             f"👋 Привет, <b>{user.first_name}</b>!\n\n"
             f"🔬 <b>Face Lab</b> — профессиональный биометрический анализ лица по 52 метрикам.\n\n"
-            f"🔒 <b>Запуск анализа доступен только после оплаты.</b>\n"
-            f"Выберите подходящий тариф ниже для мгновенного доступа:"
+            f"Нажмите «🔍 Запустить анализ лица» чтобы посмотреть приложение.\n"
+            f"Для полного анализа купите пакет анализов — <b>от 50₽ за анализ</b> (по цене батончика 🍫)."
         )
 
     await update.message.reply_text(
         text,
         parse_mode="HTML",
-        reply_markup=main_menu_keyboard(has_access),
+        reply_markup=main_menu_keyboard(credits),
     )
 
 
@@ -249,26 +222,19 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if data == "back_main":
-        has_access = db.can_analyse(user_id)
+        user_info = db.get_user(user_id) or {}
+        credits = user_info.get("paid_analyses", 0)
         text = "🏠 <b>Главное меню Face Lab</b>"
-        await query.edit_message_text(text, parse_mode="HTML", reply_markup=main_menu_keyboard(has_access))
-        return
-
-    if data == "sub_menu":
-        await query.edit_message_text(
-            "📦 <b>Выберите подписку:</b>",
-            parse_mode="HTML",
-            reply_markup=sub_menu_keyboard(),
-        )
+        await query.edit_message_text(text, parse_mode="HTML", reply_markup=main_menu_keyboard(credits))
         return
 
     if data == "prices":
         await query.edit_message_text(
-            "💰 <b>Тарифы:</b>\n\n"
-            "💎 <b>1 анализ</b> — 50⭐ (≈100₽)\n"
-            "🗓 <b>3 дня</b> — 100⭐ (≈200₽)\n"
-            "📅 <b>Неделя</b> — 300⭐ (≈600₽)\n"
-            "📆 <b>Месяц</b> — 500⭐ (≈1000₽)\n\n"
+            "💎 <b>Пакеты анализов:</b>\n\n"
+            "1️⃣  <b>1 анализ</b> — 25⭐ (≈50₽)\n"
+            "3️⃣  <b>3 анализа</b> — 60⭐ (≈120₽) 💰 выгода 20%\n"
+            "5️⃣  <b>5 анализов</b> — 100⭐ (≈200₽) 💰 выгода 20%\n"
+            "🔟  <b>10 анализов</b> — 175⭐ (≈350₽) 🔥 выгода 30%\n\n"
             "Оплата через Telegram Stars.",
             parse_mode="HTML",
             reply_markup=prices_keyboard(),
@@ -298,12 +264,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         label = PRICES[product].label
-        amount = PRICES[product].amount
 
         await context.bot.send_invoice(
             chat_id=user_id,
             title=f"Face Lab — {label}",
-            description=f"Оплата: {label}",
+            description=f"Оплата: {label}. По цене батончика 🍫",
             payload=f"{product}:{user_id}:{int(time.time())}",
             currency="XTR",
             prices=[PRICES[product]],
@@ -329,30 +294,21 @@ async def successful_payment(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
     db.add_payment(user_id, payment.total_amount, payment.currency, product, payment_id, "completed")
 
-    if product == "analysis":
-        db.grant_analysis_credit(user_id)
-        text = (
-            "✅ <b>Оплата прошла!</b>\n\n"
-            "💎 Теперь у вас есть <b>1 анализ</b>.\n\n"
-            "Нажмите «Анализ лица» чтобы начать."
-        )
-    else:
-        duration = DURATIONS.get(product, 0)
-        if duration > 0:
-            db.add_subscription(user_id, product, duration, payment_id)
-        info = db.get_subscription_info(user_id)
-        remaining = int(info["expires_at"] - time.time()) if info else 0
-        days = remaining // 86400
-        text = (
-            f"✅ <b>Подписка активирована!</b>\n\n"
-            f"📦 Действует <b>{days} дн.</b>\n\n"
-            f"Нажмите «Анализ лица» чтобы начать."
-        )
+    credits_to_add = PACK_CREDITS.get(product, 1)
+    db.add_paid_credits(user_id, credits_to_add)
 
-    has_access = db.can_analyse(user_id)
+    user_info = db.get_user(user_id) or {}
+    total_credits = user_info.get("paid_analyses", 0)
+    text = (
+        f"✅ <b>Оплата прошла!</b>\n\n"
+        f"💎 Начислено анализов: <b>{credits_to_add}</b>\n"
+        f"📊 Всего доступно: <b>{total_credits}</b>\n\n"
+        f"Нажмите «🔍 Запустить анализ лица» чтобы начать."
+    )
+
     await update.message.reply_text(
         text, parse_mode="HTML",
-        reply_markup=main_menu_keyboard(has_access),
+        reply_markup=main_menu_keyboard(total_credits),
     )
 
 
@@ -371,10 +327,12 @@ async def cmd_grant(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not user:
         return
     db.add_paid_credits(user.id, 10)
-    has_access = db.can_analyse(user.id)
+    user_info = db.get_user(user.id) or {}
+    credits = user_info.get("paid_analyses", 0)
     await update.message.reply_text(
-        "✅ Вам начислено 10 тестовых кредитов анализа!\nКнопка запуска анализа активна.",
-        reply_markup=main_menu_keyboard(has_access),
+        f"✅ Вам начислено 10 тестовых анализов!\n💎 Всего доступно: <b>{credits}</b>",
+        parse_mode="HTML",
+        reply_markup=main_menu_keyboard(credits),
     )
 
 

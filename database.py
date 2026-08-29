@@ -115,6 +115,15 @@ def grant_analysis_credit(user_id: int):
         )
 
 
+def add_paid_credits(user_id: int, count: int = 1):
+    """Add multiple paid analysis credits to the user."""
+    with get_db() as db:
+        db.execute(
+            "UPDATE users SET paid_analyses = paid_analyses + ? WHERE user_id = ?",
+            (count, user_id),
+        )
+
+
 def consume_analysis_credit(user_id: int) -> bool:
     """Consume one paid analysis credit. Returns True if a credit was available."""
     with get_db() as db:

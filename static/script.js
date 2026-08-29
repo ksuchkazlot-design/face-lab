@@ -572,11 +572,16 @@
     window.fetch("/analyze-complete", { method: "POST", body: form })
       .then(function (response) {
         return response.json().then(function (payload) {
+          if (response.status === 402) {
+            // Payment required — show paywall
+            throw { paywall: true, message: payload && payload.detail ? payload.detail : "Для анализа нужно оплатить пакет." };
+          }
           if (!response.ok) {
             throw new Error(payload && payload.detail ? payload.detail : "Ошибка сервера.");
           }
           return payload;
         }).catch(function (error) {
+          if (error && error.paywall) throw error;
           if (error instanceof SyntaxError) {
             throw new Error("Сервер вернул некорректный ответ.");
           }
@@ -604,9 +609,30 @@
       .catch(function (error) {
         stopProgress();
         state.busy = false;
+        if (error && error.paywall) {
+          showPaywall();
+          return;
+        }
         setStep(2);
         toast(error.message || "Не удалось выполнить анализ.", true);
       });
+  }
+
+  /* ------------------------------------------------------------ paywall */
+
+  function showPaywall() {
+    setStep(2);
+    var overlay = $("paywallOverlay");
+    if (overlay) {
+      overlay.classList.add("is-visible");
+    }
+  }
+
+  function hidePaywall() {
+    var overlay = $("paywallOverlay");
+    if (overlay) {
+      overlay.classList.remove("is-visible");
+    }
   }
 
   function persist(payload) {
@@ -2920,6 +2946,13 @@
       }
       setStep(1);
     });
+
+    var pwClose = $("paywallCloseBtn");
+    if (pwClose) {
+      pwClose.addEventListener("click", function () {
+        hidePaywall();
+      });
+    }
   }
 
   function preselect() {
