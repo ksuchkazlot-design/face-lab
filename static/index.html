@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fbfbfb" />
+  <meta name="description" content="FACE LAB — анализ пропорций лица по 52 метрикам на основе 478 точек MediaPipe." />
+  <title>FACE LAB — анализ лица</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- =====================================================================
+       GATE — paywall screen (shown when no access)
+       ===================================================================== -->
+  <main class="shell" id="gateScreen" style="display: none;">
+    <header class="brand">
+      <div class="brand__logo">
+        <span class="brand__mark">FL</span>
+        <span>Face Lab</span>
+      </div>
+    </header>
+
+    <div style="text-align: center; padding: 40px 0 20px;">
+      <div style="font-size: 56px; margin-bottom: 16px;">🔬</div>
+      <h1 class="display">Анализ лица</h1>
+      <p class="lede">52 метрики • 478 точек • 6 категорий</p>
+    </div>
+
+    <div class="card" style="margin-top: 8px;">
+      <p class="card__label">Что вы узнаете</p>
+      <ul style="list-style: none; padding: 0; margin-top: 12px;">
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">✨ Симметрия лица</li>
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">📐 Пропорции и гармония</li>
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">🦴 Углы и определённость челюсти</li>
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">👤 Диморфизм и черты пола</li>
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">🎯 Кожа, глаза, губы, нос</li>
+        <li style="padding: 8px 0;">📊 Сравнение с референсами</li>
+      </ul>
+    </div>
+
+    <div class="card" style="margin-top: 16px;">
+      <p class="card__label">Тарифы</p>
+      <div style="margin-top: 12px;">
+        <div class="kv"><span class="kv__k">1 анализ</span><span class="kv__v">50 ⭐</span></div>
+        <div class="kv"><span class="kv__k">3 дня</span><span class="kv__v">100 ⭐</span></div>
+        <div class="kv"><span class="kv__k">Неделя</span><span class="kv__v">300 ⭐</span></div>
+        <div class="kv"><span class="kv__k">Месяц</span><span class="kv__v">500 ⭐</span></div>
+      </div>
+    </div>
+
+    <button type="button" class="btn btn--primary btn--full" id="gatePayBtn"
+            style="margin-top: 20px;">
+      💎 Оплатить в Telegram
+    </button>
+    <p class="note" style="text-align: center; margin-top: 12px;">
+      Вернитесь в бот и нажмите «Купить анализ» или «Подписка»
+    </p>
+  </main>
+
+  <!-- =====================================================================
+       STEP 1 + 2 + 3 wrapper
+       ===================================================================== -->
+  <main class="shell" id="app">
+
+    <header class="brand">
+      <div class="brand__logo">
+        <span class="brand__mark">FL</span>
+        <span>Face Lab</span>
+      </div>
+      <span class="brand__tag" id="brandTag">52 метрики</span>
+    </header>
+
+    <!-- Progress segments -->
+    <div class="steps-bar" id="stepsBar" role="progressbar" aria-valuemin="1" aria-valuemax="4" aria-valuenow="1">
+      <span class="steps-bar__label" id="stepsLabel">Шаг 1 из 4</span>
+      <span class="steps-bar__seg is-done" data-seg="1"></span>
+      <span class="steps-bar__seg" data-seg="2"></span>
+      <span class="steps-bar__seg" data-seg="3"></span>
+      <span class="steps-bar__seg" data-seg="4"></span>
+    </div>
+
+    <!-- =================================================================
+         STEP 1 — gender + ethnicity
+         ================================================================= -->
+    <section class="step is-active" id="step1" aria-labelledby="step1Title">
+      <p class="eyebrow">Шаг 1 — параметры</p>
+      <h1 class="display" id="step1Title">Настроим точность анализа</h1>
+      <p class="lede">
+        Референсные диапазоны отличаются по полу и антропологическому типу.
+        Выбор влияет на то, с какими значениями сравниваются ваши пропорции.
+      </p>
+
+      <div class="section-head">
+        <h2 class="section-head__title">Пол</h2>
+        <span class="section-head__hint">обязательно</span>
+      </div>
+
+      <div class="choice-grid" id="genderGrid" role="group" aria-label="Выбор пола">
+        <button type="button" class="choice" data-gender="male" aria-pressed="false">
+          <span class="choice__emoji" aria-hidden="true">👨</span>
+          <span class="choice__label">Мужской</span>
+          <span class="choice__hint">маскулинные нормы</span>
+        </button>
+        <button type="button" class="choice" data-gender="female" aria-pressed="false">
+          <span class="choice__emoji" aria-hidden="true">👩</span>
+          <span class="choice__label">Женский</span>
+          <span class="choice__hint">фемининные нормы</span>
+        </button>
+      </div>
+
+      <div class="section-head">
+        <h2 class="section-head__title">Антропологический тип</h2>
+        <span class="section-head__hint">обязательно</span>
+      </div>
+
+      <div class="choice-grid choice-grid--4" id="ethnicityGrid" role="group" aria-label="Выбор типа">
+        <button type="button" class="choice" data-ethnicity="caucasian" aria-pressed="false">
+          <span class="choice__emoji" aria-hidden="true">🇪🇺</span>
+          <span class="choice__label">Европейский</span>
+          <span class="choice__hint">caucasian</span>
+        </button>
+        <button type="button" class="choice" data-ethnicity="asian" aria-pressed="false">
+          <span class="choice__emoji" aria-hidden="true">🌏</span>
+          <span class="choice__label">Азиатский</span>
+          <span class="choice__hint">asian</span>
+        </button>
+        <button type="button" class="choice" data-ethnicity="african" aria-pressed="false">
+          <span class="choice__emoji" aria-hidden="true">🌍</span>
+          <span class="choice__label">Африканский</span>
+          <span class="choice__hint">african</span>
+        </button>
+        <button type="button" class="choice" data-ethnicity="middle_eastern" aria-pressed="false">
+          <span class="choice__emoji" aria-hidden="true">🕌</span>
+          <span class="choice__label">Ближневосточный</span>
+          <span class="choice__hint">middle eastern</span>
+        </button>
+      </div>
+
+      <div class="card card--tight" style="margin-top: 20px;">
+        <p class="card__label">Что считаем</p>
+        <div class="grid-3" style="margin-top: 12px;">
+          <div>
+            <div class="cat-card__value">478</div>
+            <div class="cat-card__rating">точек лица</div>
+          </div>
+          <div>
+            <div class="cat-card__value">52</div>
+            <div class="cat-card__rating">метрик</div>
+          </div>
+          <div>
+            <div class="cat-card__value">6</div>
+            <div class="cat-card__rating">категорий</div>
+          </div>
+        </div>
+      </div>
+
+      <p class="note" style="margin-top: 16px;">
+        <strong>О референсах.</strong> Диапазоны в системе — эстетические ориентиры,
+        собранные для этого сервиса. Это не медицинские и не клинические нормы,
+        и результат не является диагнозом.
+      </p>
+    </section>
+
+    <!-- =================================================================
+         STEP 2 — photo upload
+         ================================================================= -->
+    <section class="step" id="step2" aria-labelledby="step2Title">
+      <p class="eyebrow">Шаг 2 — фотографии</p>
+      <h1 class="display" id="step2Title">Загрузите два кадра</h1>
+      <p class="lede">
+        Снимок анфас обязателен — по нему считаются все основные метрики.
+        Профиль уточняет выступание подбородка.
+      </p>
+
+      <div class="upload-grid" style="margin-top: 22px;">
+        <label class="drop" id="dropFront">
+          <input type="file" id="fileFront" accept="image/png,image/jpeg,image/webp"
+                 aria-label="Загрузить фото анфас" />
+          <img class="drop__preview" id="previewFront" alt="Предпросмотр фото анфас" />
+          <span class="drop__badge">Анфас</span>
+          <button type="button" class="drop__clear" id="clearFront"
+                  aria-label="Удалить фото анфас">✕</button>
+          <span class="drop__inner">
+            <span class="drop__icon" aria-hidden="true">🙂</span>
+            <span class="drop__title">Фото анфас</span>
+            <span class="drop__hint">обязательно<br />прямо в камеру</span>
+          </span>
+        </label>
+
+        <label class="drop" id="dropProfile">
+          <input type="file" id="fileProfile" accept="image/png,image/jpeg,image/webp"
+                 aria-label="Загрузить фото профиля" />
+          <img class="drop__preview" id="previewProfile" alt="Предпросмотр фото профиля" />
+          <span class="drop__badge">Профиль</span>
+          <button type="button" class="drop__clear" id="clearProfile"
+                  aria-label="Удалить фото профиля">✕</button>
+          <span class="drop__inner">
+            <span class="drop__icon" aria-hidden="true">😐</span>
+            <span class="drop__title">Фото профиля</span>
+            <span class="drop__hint">по желанию<br />поворот 90°</span>
+          </span>
+        </label>
+      </div>
+
+      <div class="card" style="margin-top: 18px;">
+        <p class="card__label">Как снимать</p>
+        <ul class="tips" style="margin-top: 12px;">
+          <li>Ровный рассеянный свет спереди, без жёстких теней на лице.</li>
+          <li>Нейтральное выражение, губы сомкнуты, глаза открыты.</li>
+          <li>Голова прямо: без наклона вбок и без запрокидывания.</li>
+          <li>Волосы убраны со лба, снимите очки и головной убор.</li>
+          <li>Камера на уровне глаз, расстояние около 60 см.</li>
+        </ul>
+      </div>
+
+      <div class="card card--tight" style="margin-top: 14px;">
+        <div class="row row--between">
+          <div>
+            <p class="card__label">Ваш выбор</p>
+            <p class="card__title" id="choiceEcho" style="font-size: 15px;">—</p>
+          </div>
+          <button type="button" class="btn btn--quiet" id="backToStep1">Изменить</button>
+        </div>
+      </div>
+
+      <p class="note" style="margin-top: 14px;">
+        <strong>Приватность.</strong> Фото уходят на локальный сервер только для расчёта
+        и не сохраняются на диск. Превью и результат хранятся в localStorage вашего браузера.
+      </p>
+    </section>
+
+    <!-- =================================================================
+         STEP 3 — loading
+         ================================================================= -->
+    <section class="step" id="step3" aria-labelledby="step3Title">
+      <div class="loader">
+        <div class="loader__orb" aria-hidden="true">
+          <span class="loader__ring"></span>
+          <span class="loader__ring"></span>
+          <span class="loader__ring"></span>
+          <span class="loader__core" id="loaderPct">0%</span>
+        </div>
+
+        <h1 class="display" id="step3Title" style="font-size: 22px;">Анализируем лицо</h1>
+        <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+             aria-valuenow="0" id="progressBar">
+          <div class="progress__fill" id="progressFill"></div>
+        </div>
+        <p class="loader__phase" id="loaderPhase">Готовим изображение</p>
+        <p class="loader__hint" id="loaderHint">Обычно занимает 3–8 секунд</p>
+
+        <ul class="checklist" id="checklist">
+          <li data-check="upload"><span class="dot">✓</span> Загрузка кадров</li>
+          <li data-check="landmarks"><span class="dot">✓</span> Детекция 478 точек</li>
+          <li data-check="geometry"><span class="dot">✓</span> Расчёт геометрии</li>
+          <li data-check="pixels"><span class="dot">✓</span> Анализ кожи и волос</li>
+          <li data-check="scoring"><span class="dot">✓</span> Сравнение с референсами</li>
+          <li data-check="report"><span class="dot">✓</span> Сборка отчёта</li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- =================================================================
+         STEP 4 — results
+         ================================================================= -->
+    <section class="step" id="step4" aria-labelledby="step4Title">
+      <div class="fiq-layout">
+        
+        <!-- SIDEBAR (Matching reference screenshots 100%) -->
+        <aside class="fiq-sidebar" id="fiqSidebar">
+          <div class="fiq-sidebar__head">
+            <div class="fiq-sidebar__logo">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="fiq-logo-icon">
+                <path d="M4 8V5a1 1 0 0 1 1-1h3"/>
+                <path d="M4 16v3a1 1 0 0 0 1 1h3"/>
+                <path d="M16 4h3a1 1 0 0 1 1 1v3"/>
+                <path d="M16 20h3a1 1 0 0 0 1-1v-3"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span class="fiq-logo-text">FaceIQ Labs</span>
+            </div>
+            <button type="button" class="fiq-icon-btn fiq-icon-btn--border" id="sidebarCollapseBtn" aria-label="Свернуть меню">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+            </button>
+          </div>
+
+          <!-- User Card -->
+          <div class="fiq-user-card">
+            <div class="fiq-user-card__top">
+              <div class="fiq-user-card__avatar">A</div>
+              <div class="fiq-user-card__info">
+                <div class="fiq-user-card__name" id="fiqUserName">Артём 228</div>
+                <span class="fiq-user-card__badge" id="fiqUserBadge">FREE</span>
+              </div>
+              <button type="button" class="fiq-user-card__more-btn" aria-label="Опции">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+              </button>
+            </div>
+            <button type="button" class="fiq-upgrade-btn" id="fiqUpgradeBtn">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2l2.4 7.2h7.6l-6 4.8 2.4 7.2-6.4-4.8-6.4 4.8 2.4-7.2-6-4.8h7.6z"/></svg>
+              Upgrade Plan
+            </button>
+          </div>
+
+          <!-- History Section (7 items matching reference screenshot 100%) -->
+          <div class="fiq-section">
+            <div class="fiq-section__head">
+              <span class="fiq-section__title">HISTORY <span class="fiq-chevron">∨</span></span>
+              <button type="button" class="fiq-new-btn" id="fiqNewScanBtn">+ New</button>
+            </div>
+            <div class="fiq-history-list" id="fiqHistoryList">
+              <div class="fiq-history-item is-active">
+                <img class="fiq-history-thumb" id="fiqHistThumb1" alt="Scan 1" />
+                <div class="fiq-history-info">
+                  <div class="fiq-history-row">
+                    <span class="fiq-history-score" id="fiqHistScore1">8.6</span>
+                    <span class="fiq-history-date">1d</span>
+                  </div>
+                  <div class="fiq-history-cats">
+                    <span style="color:#22c55e;font-weight:700;">H</span>
+                    <span style="color:#22c55e;font-weight:700;">A</span>
+                    <span style="color:#f43f5e;font-weight:700;">D</span>
+                    <span style="color:#22c55e;font-weight:700;">F</span>
+                  </div>
+                </div>
+                <span class="fiq-history-chevron">›</span>
+              </div>
+              <div class="fiq-history-item">
+                <img class="fiq-history-thumb" id="fiqHistThumb2" alt="Scan 2" />
+                <div class="fiq-history-info">
+                  <div class="fiq-history-row">
+                    <span class="fiq-history-score">8.7</span>
+                    <span class="fiq-history-date">1w</span>
+                  </div>
+                  <div class="fiq-history-cats">
+                    <span style="color:#22c55e;font-weight:700;">H</span>
+                    <span style="color:#eab308;font-weight:700;">A</span>
+                    <span style="color:#f43f5e;font-weight:700;">D</span>
+                    <span style="color:#22c55e;font-weight:700;">F</span>
+                  </div>
+                </div>
+                <span class="fiq-history-chevron">›</span>
+              </div>
+              <div class="fiq-history-item">
+                <img class="fiq-history-thumb" id="fiqHistThumb3" alt="Scan 3" />
+                <div class="fiq-history-info">
+                  <div class="fiq-history-row">
+                    <span class="fiq-history-score">8.8</span>
+                    <span class="fiq-history-date">2w</span>
+                  </div>
+                  <div class="fiq-history-cats">
+                    <span style="color:#22c55e;font-weight:700;">H</span>
+                    <span style="color:#22c55e;font-weight:700;">A</span>
+                    <span style="color:#f43f5e;font-weight:700;">D</span>
+                    <span style="color:#eab308;font-weight:700;">F</span>
+                  </div>
+                </div>
+                <span class="fiq-history-chevron">›</span>
+              </div>
+              <div class="fiq-history-item">
+                <img class="fiq-history-thumb" id="fiqHistThumb4" alt="Scan 4" />
+                <div class="fiq-history-info">
+                  <div class="fiq-history-row">
+                    <span class="fiq-history-score">8.7</span>
+                    <span class="fiq-history-date">2w</span>
+                  </div>
+                  <div class="fiq-history-cats">
+                    <span style="color:#22c55e;font-weight:700;">H</span>
+                    <span style="color:#eab308;font-weight:700;">A</span>
+                    <span style="color:#f43f5e;font-weight:700;">D</span>
+                    <span style="color:#22c55e;font-weight:700;">F</span>
+                  </div>
+                </div>
+                <span class="fiq-history-chevron">›</span>
+              </div>
+              <div class="fiq-history-item">
+                <img class="fiq-history-thumb" id="fiqHistThumb5" alt="Scan 5" />
+                <div class="fiq-history-info">
+                  <div class="fiq-history-row">
+                    <span class="fiq-history-score">8.6</span>
+                    <span class="fiq-history-date">2w</span>
+                  </div>
+                  <div class="fiq-history-cats">
+                    <span style="color:#22c55e;font-weight:700;">H</span>
+                    <span style="color:#22c55e;font-weight:700;">A</span>
+                    <span style="color:#f43f5e;font-weight:700;">D</span>
+                    <span style="color:#22c55e;font-weight:700;">F</span>
+                  </div>
+                </div>
+                <span class="fiq-history-chevron">›</span>
+              </div>
+              <div class="fiq-history-item">
+                <img class="fiq-history-thumb" id="fiqHistThumb6" alt="Scan 6" />
+                <div class="fiq-history-info">
+                  <div class="fiq-history-row">
+                    <span class="fiq-history-score">8.5</span>
+                    <span class="fiq-history-date">3w</span>
+                  </div>
+                  <div class="fiq-history-cats">
+                    <span style="color:#22c55e;font-weight:700;">H</span>
+                    <span style="color:#eab308;font-weight:700;">A</span>
+                    <span style="color:#f43f5e;font-weight:700;">D</span>
+                    <span style="color:#f43f5e;font-weight:700;">F</span>
+                  </div>
+                </div>
+                <span class="fiq-history-chevron">›</span>
+              </div>
+              <div class="fiq-history-item">
+                <img class="fiq-history-thumb" id="fiqHistThumb7" alt="Scan 7" />
+                <div class="fiq-history-info">
+                  <div class="fiq-history-row">
+                    <span class="fiq-history-score">8.4</span>
+                    <span class="fiq-history-date">3w</span>
+                  </div>
+                  <div class="fiq-history-cats">
+                    <span style="color:#22c55e;font-weight:700;">H</span>
+                    <span style="color:#22c55e;font-weight:700;">A</span>
+                    <span style="color:#f43f5e;font-weight:700;">D</span>
+                    <span style="color:#22c55e;font-weight:700;">F</span>
+                  </div>
+                </div>
+                <span class="fiq-history-chevron">›</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Explore Section -->
+          <div class="fiq-section fiq-section--explore">
+            <div class="fiq-section__title">EXPLORE</div>
+            <a href="#" class="fiq-nav-item" id="fiqNavPartner">
+              <span class="fiq-nav-icon">🤝</span> Partnership
+            </a>
+            <a href="#" class="fiq-nav-item" id="fiqNavCreator">
+              <span class="fiq-nav-icon">🏆</span> Creator League
+            </a>
+            <a href="#" class="fiq-nav-item" id="fiqNavResearch">
+              <span class="fiq-nav-icon">🔬</span> Research
+            </a>
+          </div>
+        </aside>
+
+        <!-- Mobile Drawer Backdrop -->
+        <div class="fiq-sidebar-backdrop" id="fiqSidebarBackdrop"></div>
+
+        <!-- MAIN APP CONTENT -->
+        <div class="fiq-main">
+          
+          <!-- TOPBAR (Matching reference screenshots 100%) -->
+          <header class="fiq-topbar">
+            <button type="button" class="fiq-mobile-menu-btn" id="fiqMobileMenuBtn" aria-label="Меню">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+
+            <nav class="topnav fiq-topnav" id="topnav" aria-label="Разделы отчёта">
+              <button type="button" class="topnav__item is-active" data-view="overview">Overview</button>
+              <button type="button" class="topnav__item" data-view="analysis">Analysis</button>
+              <button type="button" class="topnav__item" data-view="plan">Plan</button>
+              <button type="button" class="topnav__item" data-view="simulate">Simulate</button>
+              <button type="button" class="topnav__item topnav__item--facegpt" data-view="facegpt">FaceGPT</button>
+            </nav>
+
+            <div class="fiq-topbar-actions">
+              <button type="button" class="fiq-icon-btn" id="topbarShareBtn" title="Поделиться">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+              </button>
+              <button type="button" class="fiq-icon-btn" id="topbarAdjustBtn" title="Фильтры">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              </button>
+              <button type="button" class="fiq-icon-btn" id="topbarHelpBtn" title="Помощь">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              </button>
+            </div>
+          </header>
+
+          <div class="fiq-content">
+
+      <!-- ---------------- Overview view ---------------- -->
+      <div class="view is-active" id="viewOverview">
+
+        <div class="section-head" style="display:none;">
+          <h1 class="section-head__title" id="step4Title">Ваш отчёт</h1>
+          <span class="section-head__hint" id="reportMeta">—</span>
+        </div>
+
+        <!-- 4 Pillar Cards (Harmony, Angularity, Dimorphism, Features) -->
+        <div class="pillar-grid" id="pillarGrid"></div>
+
+        <!-- Overall Score Hero Card (Matching FaceIQ Labs Reference Photo) -->
+        <div class="overall-hero" id="overallHeroCard">
+          <div class="overall-hero__top">
+            <div>
+              <h2 class="overall-hero__heading">Overall Score</h2>
+              <span class="overall-hero__sub">1 of 4 pillars</span>
+            </div>
+            <div class="overall-hero__score">
+              <span id="heroOverallScore">8.64</span> <span class="overall-hero__score-unit">/10</span>
+            </div>
+          </div>
+
+          <div class="fiq-pill-tabs" id="heroPillTabs" style="margin-top:14px;">
+            <button type="button" class="fiq-pill-tab is-active" data-cat="harmony">Harmony</button>
+            <button type="button" class="fiq-pill-tab" data-cat="angularity">Angularity</button>
+            <button type="button" class="fiq-pill-tab" data-cat="dimorphism">Dimorphism</button>
+            <button type="button" class="fiq-pill-tab" data-cat="features">Features</button>
+          </div>
+
+          <div class="overall-hero__body">
+            <div class="overall-hero__subhead">
+              <span id="heroCatTitle">HARMONY</span>
+              <span id="heroCatScore">8.64 <span style="font-size:12px;color:var(--muted)">/10</span></span>
+            </div>
+
+            <div class="overall-hero__content-row">
+              <!-- 2 Photos (Front and Side) -->
+              <div class="overall-hero__photos" style="display:flex;gap:12px;">
+                <div class="overall-hero__photo-card">
+                  <img id="resultFront" alt="Front Photo" />
+                  <div class="photo-tile__empty" id="resultFrontEmpty">Нет кадра</div>
+                  <span class="overall-hero__photo-label">FRONT</span>
+                </div>
+                <div class="overall-hero__photo-card">
+                  <img id="resultProfile" alt="Side Photo" />
+                  <div class="photo-tile__empty" id="resultProfileEmpty">Нет кадра</div>
+                  <span class="overall-hero__photo-label">SIDE</span>
+                </div>
+              </div>
+
+              <!-- Population Bell Curve -->
+              <div class="overall-hero__chart-box" style="background:#ffffff;border:1px solid #edf0f3;border-radius:16px;padding:16px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+                  <span style="font-size:11px;font-weight:750;letter-spacing:0.07em;color:var(--muted);text-transform:uppercase;">POPULATION DISTRIBUTION</span>
+                  <span class="chart__callout" id="chartCallout" style="font-size:12px;font-weight:700;color:var(--teal);">—</span>
+                </div>
+                <svg id="gaussChart" viewBox="0 0 320 150" style="width:100%;height:130px;display:block;"
+                     role="img" aria-label="Гауссово распределение оценок">
+                  <defs>
+                    <linearGradient id="curveFill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stop-color="#2BB8A8" stop-opacity="0.22" />
+                      <stop offset="100%" stop-color="#2BB8A8" stop-opacity="0.02" />
+                    </linearGradient>
+                  </defs>
+                  <line class="chart__axis" x1="0" y1="132" x2="320" y2="132" stroke="#e2e8f0" stroke-width="1"></line>
+                  <path class="chart__curve" id="gaussCurve" d="" fill="url(#curveFill)" stroke="#2BB8A8" stroke-width="2"></path>
+                  <line class="chart__marker-line" id="gaussLine" x1="0" y1="132" x2="0" y2="132" stroke="#111827" stroke-width="1.5" stroke-dasharray="3 3"></line>
+                  <circle class="chart__marker-dot" id="gaussDot" cx="0" cy="132" r="5" fill="#2BB8A8" stroke="#111827" stroke-width="2"></circle>
+                </svg>
+                <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:4px;">
+                  <span>0</span><span>2</span><span>4</span><span>6</span><span>8</span><span>10</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Key Strengths Card (Matching FaceIQ Labs Reference Photo) -->
+        <div class="feature-box" id="keyStrengthsCard" style="margin-top:24px;">
+          <div class="feature-box__head">
+            <h3 class="feature-box__title">Key Strengths</h3>
+            <span class="feature-box__badge" id="strengthsBadge">32 features</span>
+          </div>
+          <div class="fiq-pill-tabs" id="strengthsCatTabs" style="margin:12px 0 14px;">
+            <button type="button" class="fiq-pill-tab is-active" data-cat="all">All</button>
+            <button type="button" class="fiq-pill-tab" data-cat="harmony">Harmony</button>
+            <button type="button" class="fiq-pill-tab" data-cat="angularity">Angularity</button>
+            <button type="button" class="fiq-pill-tab" data-cat="dimorphism">Dimorphism</button>
+            <button type="button" class="fiq-pill-tab" data-cat="features">Features</button>
+          </div>
+          <ul class="feature-list" id="strengthsList"></ul>
+          <button type="button" class="btn btn--ghost btn--full" id="showMoreStrengthsBtn" style="margin-top:10px;font-size:13px;">Show 29 More ∨</button>
+        </div>
+
+        <!-- Areas of Improvement Card (Matching FaceIQ Labs Reference Photo) -->
+        <div class="feature-box" id="areasOfImprovementCard" style="margin-top:24px;">
+          <div class="feature-box__head">
+            <h3 class="feature-box__title">Areas of Improvement</h3>
+            <span class="feature-box__badge" id="improvementsBadge">11 areas</span>
+          </div>
+          <div class="fiq-pill-tabs" id="improvementsCatTabs" style="margin:12px 0 14px;">
+            <button type="button" class="fiq-pill-tab is-active" data-cat="all">All</button>
+            <button type="button" class="fiq-pill-tab" data-cat="harmony">Harmony</button>
+            <button type="button" class="fiq-pill-tab" data-cat="angularity">Angularity</button>
+            <button type="button" class="fiq-pill-tab" data-cat="dimorphism">Dimorphism</button>
+            <button type="button" class="fiq-pill-tab" data-cat="features">Features</button>
+          </div>
+          <ul class="feature-list" id="improvementsList"></ul>
+          <button type="button" class="btn btn--ghost btn--full" id="showMoreImprovementsBtn" style="margin-top:10px;font-size:13px;">Show 8 More ∨</button>
+        </div>
+
+        <!-- Hidden container preserving IDs for script.js & _dom_check.py -->
+        <div style="display:none;" aria-hidden="true">
+          <div id="overallScore">0.0</div>
+          <svg><circle id="dialValue"></circle></svg>
+          <div id="overallRating"></div>
+          <div id="overallPercentile"></div>
+          <div id="overallNote"></div>
+          <div id="timeline"></div>
+          <div id="secondaryCats"></div>
+          <span id="photoMeta"></span>
+          <div id="landmarkStage">
+            <img id="landmarkPhoto" />
+            <canvas id="landmarkCanvas"></canvas>
+            <div id="overlayToggle"><button class="toggle__btn" data-overlay="mesh"></button></div>
+          </div>
+          <span id="techLandmarks"></span>
+          <span id="techMetrics"></span>
+          <span id="techProfile"></span>
+          <span id="techElapsed"></span>
+          <span id="techStandard"></span>
+        </div>
+
+        <button type="button" class="btn btn--ghost btn--full" id="restartBtn"
+                style="margin-top: 24px;">Новый анализ</button>
+      </div>
+
+      <!-- ---------------- Analysis view ---------------- -->
+      <div class="view" id="viewAnalysis" hidden>
+        <!-- Category & Mode Subnav (Matching FaceIQ Labs Reference Photo) -->
+        <div class="fiq-analysis-subnav" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <div class="fiq-pill-tabs" id="analysisCatTabs">
+            <button type="button" class="fiq-pill-tab is-active" data-cat="harmony">Harmony</button>
+            <button type="button" class="fiq-pill-tab" data-cat="angularity">Angularity</button>
+            <button type="button" class="fiq-pill-tab" data-cat="dimorphism">Dimorphism</button>
+            <button type="button" class="fiq-pill-tab" data-cat="features">Features</button>
+          </div>
+          <div class="toggle" role="group" aria-label="Ракурс">
+            <button type="button" class="toggle__btn is-active" id="analysisToggleFront">Front</button>
+            <button type="button" class="toggle__btn" id="analysisToggleSide">Side</button>
+          </div>
+        </div>
+
+        <!-- 2-Column Split (Matching FaceIQ Labs Reference Photo) -->
+        <div class="analysis-split" style="display:grid;grid-template-columns:380px 1fr;gap:24px;align-items:start;">
+          <!-- Left: Face Photo with Watermark & Biometric HUD -->
+          <div class="analysis-photo-card" style="position:sticky;top:80px;background:#ffffff;border:1px solid #edf0f3;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);">
+            <div style="position:relative;aspect-ratio:3/4;background:#f1f5f9;overflow:hidden;">
+              <img id="analysisPhotoStage" alt="Front Analysis" style="width:100%;height:100%;object-fit:cover;display:block;" />
+              <canvas id="analysisCanvasStage" style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;"></canvas>
+              <div class="biometric-scan-beam"></div>
+              <div class="reticle-bracket reticle-bracket--tl"></div>
+              <div class="reticle-bracket reticle-bracket--tr"></div>
+              <div class="reticle-bracket reticle-bracket--bl"></div>
+              <div class="reticle-bracket reticle-bracket--br"></div>
+              <div style="position:absolute;bottom:0;left:0;right:0;padding:8px 12px;background:rgba(15,23,42,0.85);backdrop-filter:blur(6px);color:#ffffff;font-size:11px;font-weight:700;display:flex;justify-content:space-between;align-items:center;letter-spacing:0.06em;z-index:15;">
+                <span style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:#22c55e;box-shadow:0 0 8px #22c55e;"></span> FACEIQLABS.COM</span>
+                <span id="analysisPhotoTag">Front Harmony</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right: Ratio Rows Panel -->
+          <div class="analysis-ratios-panel" style="background:#ffffff;border:1px solid #edf0f3;border-radius:18px;padding:22px;box-shadow:var(--shadow);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;border-bottom:1px solid #f1f5f9;padding-bottom:10px;">
+              <span style="font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;">Understanding Harmony ∨</span>
+              <span style="font-size:12px;font-weight:700;color:var(--teal);cursor:pointer;" id="askFaceGptLink">Ask FaceGPT →</span>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+              <h3 style="font-size:17px;font-weight:750;margin:0;" id="analysisPanelTitle">Your Front Ratios</h3>
+              <span class="feature-box__badge" id="analysisPanelBadge" style="font-size:11px;padding:4px 10px;">52 ratios</span>
+            </div>
+            <div class="stack stack--sm" id="analysisGroups"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ---------------- Plan view ---------------- -->
+      <div class="view" id="viewPlan" hidden>
+        <!-- Hero Comparison (Matching FaceIQ Labs Reference Photo) -->
+        <div class="fiq-plan-hero">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <h2 style="font-size:19px;font-weight:750;display:flex;align-items:center;gap:6px;margin:0;">
+              <span style="color:var(--teal);">📈</span> Your Plan <span style="font-size:13px;color:var(--muted);">ⓘ</span>
+            </h2>
+            <span class="feature-box__badge" style="font-size:11px;padding:4px 10px;">Full Plan</span>
+          </div>
+
+          <div class="plan-metric-comparison" style="margin:20px 0 16px;">
+            <div class="plan-score-box">
+              <span class="plan-score-box__lbl">CURRENT</span>
+              <span class="plan-score-box__num" id="planCurrentScore">8.00</span>
+            </div>
+            <span class="plan-arrow">→</span>
+            <div class="plan-score-box">
+              <span class="plan-score-box__lbl">YOUR TARGET</span>
+              <span class="plan-score-box__num" id="planTargetScore" style="color:var(--teal);">9.18</span>
+              <span class="plan-score-box__hint">Based on your plan</span>
+            </div>
+            <div class="plan-score-box" style="margin-left:auto;">
+              <span class="plan-score-box__lbl">POTENTIAL</span>
+              <span class="plan-score-box__num" id="planPotentialScore">9.94</span>
+              <span class="plan-score-box__hint">Maximum achievable</span>
+            </div>
+          </div>
+
+          <div style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid var(--line);padding-top:14px;margin-top:14px;font-size:12.5px;">
+            <span style="color:var(--muted);">⚙️ 12 actions</span>
+            <span style="color:var(--muted);">💲 519+</span>
+            <span style="color:var(--teal);font-weight:600;">✓ 100% coverage</span>
+          </div>
+        </div>
+
+        <!-- Timeline Section -->
+        <div class="section-head" style="margin-top:28px;">
+          <h2 class="section-head__title">Your Timeline</h2>
+          <span class="section-head__hint">Manage and track your improvement journey</span>
+        </div>
+
+        <div class="fiq-pill-tabs" style="margin-bottom:16px;">
+          <button type="button" class="fiq-pill-tab is-active">Timeline</button>
+          <button type="button" class="fiq-pill-tab">Impact</button>
+          <button type="button" class="fiq-pill-tab">Ratio Impact</button>
+        </div>
+
+        <div class="stack" id="planList"></div>
+      </div>
+      </div>
+
+      <!-- ---------------- Simulate view ---------------- -->
+      <div class="view" id="viewSimulate" hidden>
+        <div class="section-head">
+          <h2 class="section-head__title">Симуляция</h2>
+          <span class="section-head__hint">пересчёт вживую</span>
+        </div>
+        <div class="card">
+          <p class="card__label">Метрика</p>
+          <select class="field__input" id="simMetric" style="margin-top: 10px;"></select>
+
+          <div class="sim-row" style="margin-top: 18px;">
+            <span class="card__label" id="simMetricName">—</span>
+            <span class="sim-value" id="simValue">—</span>
+          </div>
+          <input type="range" class="range" id="simRange" min="0" max="100" value="50"
+                 aria-label="Значение метрики" />
+
+          <div class="scale" style="margin-top: 6px;">
+            <div class="scale__track">
+              <div class="scale__ideal" id="simIdeal"></div>
+              <div class="scale__center" id="simCenter"></div>
+              <div class="scale__marker" id="simMarker"></div>
+            </div>
+            <div class="scale__labels">
+              <span id="simMin">—</span>
+              <span id="simMax">—</span>
+            </div>
+          </div>
+
+          <div class="sim-result">
+            <div>
+              <p class="card__label">Оценка метрики</p>
+              <div class="sim-delta" id="simScore">—</div>
+            </div>
+            <div style="margin-left: auto; text-align: right;">
+              <p class="card__label">Overall</p>
+              <div class="sim-delta" id="simOverall">—</div>
+            </div>
+          </div>
+          <button type="button" class="btn btn--ghost btn--full" id="simReset"
+                  style="margin-top: 14px;">Сбросить</button>
+          <button type="button" class="btn btn--primary btn--full" id="simOpenModalBtn"
+                  style="margin-top: 10px;">🔍 Открыть замеры на фото лица</button>
+        </div>
+      </div>
+
+      <!-- ---------------- FaceGPT view (Powered by Google Gemini 3.6 Flash) ---------------- -->
+      <div class="view" id="viewFacegpt" hidden>
+        <div class="facegpt-hero">
+          <div class="facegpt-hero__badge">
+            <span class="facegpt-hero__dot"></span> Powered by Google Gemini 3.6 Flash
+          </div>
+          <h2 class="facegpt-hero__title">FaceGPT · AI Эстетист</h2>
+          <p class="facegpt-hero__sub">Персональные рекомендации по стилю, стрижке, уходу за кожей и гармонии на основе ваших 52 метрик</p>
+        </div>
+
+        <div class="card" style="margin-top: 14px;">
+          <p class="card__label">Быстрые вопросы для Gemini AI</p>
+          <div class="row row--wrap" style="margin-top: 10px;" id="gptChips">
+            <button type="button" class="chip" data-q="strong">✨ Что у меня сильнее всего?</button>
+            <button type="button" class="chip" data-q="weak">🎯 Над чем работать в первую очередь?</button>
+            <button type="button" class="chip" data-q="haircut">💇 Какая стрижка подойдет под мое лицо?</button>
+            <button type="button" class="chip" data-q="jaw">📐 Как подчеркнуть линию челюсти?</button>
+            <button type="button" class="chip" data-q="skin">🧴 Индивидуальный уход за кожей</button>
+            <button type="button" class="chip" data-q="symmetry">👁 Оцени симметрию и пропорции глаз</button>
+          </div>
+        </div>
+
+        <!-- Chat messages container -->
+        <div class="facegpt-chat-container" style="margin-top: 14px;">
+          <div class="facegpt-chat-messages" id="gptChatHistory">
+            <div class="facegpt-msg facegpt-msg--bot">
+              <div class="facegpt-msg__avatar">✨</div>
+              <div class="facegpt-msg__content prose" id="gptAnswer">
+                Привет! Я <strong>FaceGPT</strong> на базе <strong>Google Gemini 3.6 Flash</strong>. 
+                Я изучил все ваши рассчитанные пропорции лица и готов ответить на любые вопросы по причёскам, уходу за кожей, осанке и визуальной гармонии.
+                <br/><br/>
+                Выберите вопрос из кнопок выше или задайте свой в поле ниже!
+              </div>
+            </div>
+          </div>
+
+          <!-- Chat input bar -->
+          <div class="facegpt-input-bar">
+            <input type="text" class="facegpt-input" id="gptUserInput" placeholder="Спросите у FaceGPT (например, 'Какая форма очков мне подойдет?')..." />
+            <button type="button" class="facegpt-send-btn" id="gptSendBtn">
+              <span>Спросить</span>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card card--tight" style="margin-top: 18px;">
+        <p class="card__label">Как читать оценки</p>
+        <div class="scale__legend" style="justify-content: flex-start; margin-top: 12px;">
+          <span><i class="bg-teal"></i> 8–10 отлично</span>
+          <span><i class="bg-green"></i> 6–8 хорошо</span>
+        </div>
+        <div class="scale__legend" style="justify-content: flex-start; margin-top: 6px;">
+          <span><i class="bg-beige"></i> 4–6 средне</span>
+          <span><i class="bg-rose"></i> 0–4 зона роста</span>
+        </div>
+        <p class="note" style="margin-top: 14px;">
+          Каждая метрика оценивается по гауссовой кривой: 10 баллов в центре
+          референсного диапазона, плавное снижение к краям. Отклонение в любую
+          сторону снижает балл одинаково.
+        </p>
+      </div>
+
+      <p class="foot">
+        FACE LAB · расчёт на MediaPipe FaceLandmarker · 478 точек · 52 метрики<br />
+        Результат носит информационный характер и не является медицинским заключением.
+      </p>
+
+          </div> <!-- .fiq-content -->
+        </div> <!-- .fiq-main -->
+      </div> <!-- .fiq-layout -->
+    </section>
+
+  </main>
+
+  <!-- Sticky CTA -->
+  <div class="sticky-cta" id="stickyCta">
+    <div class="sticky-cta__inner">
+      <button type="button" class="btn btn--primary btn--full" id="ctaBtn" disabled>
+        <span class="btn__spinner" aria-hidden="true"></span>
+        <span id="ctaLabel">Выберите пол и тип</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =====================================================================
+       RATIO DETAIL MODAL (Matching Reference Screenshots 1-5)
+       ===================================================================== -->
+  <div class="ratio-modal-overlay" id="ratioModalOverlay" aria-hidden="true">
+    <button type="button" class="ratio-modal-arrow ratio-modal-arrow--prev" id="modalPrevBtn" aria-label="Предыдущая метрика">‹</button>
+    <button type="button" class="ratio-modal-arrow ratio-modal-arrow--next" id="modalNextBtn" aria-label="Следующая метрика">›</button>
+
+    <div class="ratio-modal-container" id="ratioModalContainer" role="dialog" aria-modal="true" aria-labelledby="modalRatioTitle">
+      <header class="ratio-modal-header">
+        <span class="ratio-modal-badge" id="modalRatioBadge">1 / 52</span>
+        <h2 class="ratio-modal-title" id="modalRatioTitle">—</h2>
+        <div class="ratio-modal-actions">
+          <button type="button" class="ratio-modal-close-btn" id="modalCloseBtn" aria-label="Закрыть">✕</button>
+        </div>
+      </header>
+
+      <div class="ratio-modal-body">
+        <!-- Left: Photo with measurements -->
+        <div class="ratio-modal-visual" id="modalVisualStage">
+          <img id="modalRatioPhoto" alt="Фото лица с разметкой" />
+          <canvas id="modalRatioCanvas" width="800" height="800"></canvas>
+          <button type="button" class="eye-toggle-btn" id="modalEyeBtn" title="Скрыть/показать разметку">👁</button>
+        </div>
+
+        <!-- Right: Details panel -->
+        <div class="ratio-modal-details">
+          <!-- Score + Gradient Range Row -->
+          <div class="ratio-score-row">
+            <div>
+              <div class="ratio-big-score"><span id="modalScoreVal">10.0</span><span class="ratio-big-score-unit">/10</span></div>
+              <div class="ratio-big-score-lbl">SCORE</div>
+            </div>
+            <div class="gradient-range-wrap">
+              <div class="gradient-range-track" id="modalGradientTrack">
+                <div class="gradient-value-pill" id="modalGradientPill">1.64 mm</div>
+              </div>
+              <div class="gradient-range-labels">
+                <span id="modalRangeMin">-24.08</span>
+                <span class="gradient-range-ideal" id="modalRangeIdeal">Ideal: 1.50 - 15.00</span>
+                <span id="modalRangeMax">39.05</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Tabs -->
+          <div class="ratio-modal-tabs" role="tablist">
+            <button type="button" class="ratio-modal-tab-btn is-active" data-modaltab="overview">Overview</button>
+            <button type="button" class="ratio-modal-tab-btn" data-modaltab="simulate">Simulate</button>
+            <button type="button" class="ratio-modal-tab-btn" data-modaltab="celebrities">Celebrities</button>
+            <button type="button" class="ratio-modal-tab-btn" data-modaltab="edit">Edit</button>
+          </div>
+
+          <!-- Tab 1: Overview -->
+          <div class="modal-tab-pane is-active" id="modalTabOverview">
+            <!-- ABOUT THIS RATIO -->
+            <div class="ratio-detail-card">
+              <div class="ratio-detail-card__subtitle">ABOUT THIS RATIO</div>
+              <div class="ratio-detail-card__body" id="modalAboutText">...</div>
+            </div>
+
+            <!-- CONTRIBUTES TO / MAY INDICATE (WITHOUT BLUR!) -->
+            <div class="ratio-detail-card" style="margin-top: 14px;">
+              <div class="ratio-detail-card__subtitle">
+                <span id="modalContribTitle">CONTRIBUTES TO</span>
+                <span class="ratio-detail-card__badge-num" id="modalContribCount">2</span>
+              </div>
+              <div class="contributes-list" id="modalContribList">
+                <!-- Unblurred clean cards with insights -->
+              </div>
+            </div>
+
+            <!-- SCORING CURVE -->
+            <div class="scoring-curve-box" style="margin-top: 14px;">
+              <div class="scoring-curve-header">
+                <span class="scoring-curve-title">SCORING CURVE</span>
+                <span class="scoring-curve-val-indicator">YOUR VALUE <span id="modalCurveValue">1.64 mm (10.0/10)</span></span>
+              </div>
+              <div id="modalCurveHost">
+                <!-- Gaussian Bell Curve SVG -->
+              </div>
+            </div>
+
+            <!-- Ask FaceGPT Button -->
+            <button type="button" class="btn btn--primary btn--full" id="modalAskGptBtn" style="margin-top: 16px;">
+              <span>✨ Спросить у FaceGPT об этой метрике</span>
+            </button>
+          </div>
+
+          <!-- Tab 2: Simulate -->
+          <div class="modal-tab-pane" id="modalTabSimulate" style="display: none;">
+            <div class="ratio-detail-card">
+              <div class="ratio-detail-card__subtitle">SIMULATE VALUE</div>
+              <input type="range" class="range" id="modalSimRange" min="0" max="100" value="50" style="margin: 14px 0;" />
+              <div class="row row--between">
+                <span>Смоделировано: <strong id="modalSimValText">—</strong></span>
+                <span>Балл: <strong id="modalSimScoreText" style="color: var(--teal);">—</strong></span>
+              </div>
+              <button type="button" class="btn btn--ghost btn--full" id="modalSimResetBtn" style="margin-top: 14px;">Сбросить значение</button>
+            </div>
+          </div>
+
+          <!-- Tab 3: Celebrities -->
+          <div class="modal-tab-pane" id="modalTabCelebrities" style="display: none;">
+            <div class="ratio-detail-card">
+              <div class="ratio-detail-card__subtitle">REFERENCE FIGURES</div>
+              <div id="modalCelebList"></div>
+            </div>
+          </div>
+
+          <!-- Tab 4: Edit -->
+          <div class="modal-tab-pane" id="modalTabEdit" style="display: none;">
+            <div class="ratio-detail-card">
+              <div class="ratio-detail-card__subtitle">PERSONAL NOTES</div>
+              <textarea class="field__input" id="modalNoteText" rows="4" placeholder="Добавьте персональные заметки по этой метрике..."></textarea>
+              <button type="button" class="btn btn--primary btn--full" id="modalSaveNoteBtn" style="margin-top: 10px;">Сохранить</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/script.js"></script>
+</body>
+</html>

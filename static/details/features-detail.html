@@ -1,0 +1,331 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fbfbfb" />
+  <title>Features — метрика — FACE LAB</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- Sticky header -->
+  <header class="sticky" id="stickyHeader">
+    <div class="sticky__inner">
+      <button type="button" class="back-btn" id="backBtn" aria-label="Назад">‹</button>
+      <img class="sticky__thumb" id="stickyThumb" alt="Ваше фото" />
+      <div class="sticky__meta">
+        <div class="sticky__title" id="stickyTitle">Метрика</div>
+        <div class="sticky__sub" id="stickySub">—</div>
+      </div>
+      <div class="cat-card__score">
+        <div class="cat-card__value" id="headerScore">—</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell" id="page">
+
+    <!-- Title -->
+    <section style="padding-top: 22px;">
+      <p class="eyebrow">Features · метрика</p>
+      <h1 class="display" id="detailTitle">—</h1>
+      <p class="lede" id="detailUnit">—</p>
+    </section>
+
+    <!-- Score card -->
+    <section class="card" style="margin-top: 20px;">
+      <div class="row row--between">
+        <div>
+          <p class="card__label">Ваше значение</p>
+          <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.035em;"
+               id="bigValue">—</div>
+        </div>
+        <div style="text-align: right;">
+          <p class="card__label">Балл</p>
+          <div style="font-size: 30px; font-weight: 700; letter-spacing: -0.035em;"
+               id="bigScore">—</div>
+        </div>
+      </div>
+
+      <div class="cat-card__bar" style="margin: 16px 0 12px;">
+        <span class="cat-card__fill" id="scoreBar"></span>
+      </div>
+
+      <div class="row row--between row--wrap">
+        <span class="badge" id="statusBadge">—</span>
+        <span class="chip">
+          <span id="bigRating">—</span>
+        </span>
+        <span class="chip">
+          перцентиль <strong id="bigPercentile">—</strong>
+        </span>
+      </div>
+    </section>
+
+    <!-- Visual scale -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Шкала</h2>
+        <span class="section-head__hint">где вы на диапазоне</span>
+      </div>
+      <div class="card">
+        <div id="scaleHost"></div>
+        <div class="scale__legend" id="scaleLegend"></div>
+      </div>
+    </section>
+
+    <!-- Photo with overlay -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">На фото</h2>
+        <div class="toggle" id="photoToggle" role="group" aria-label="Выбор кадра">
+          <button type="button" class="toggle__btn is-active" data-side="front">Front</button>
+          <button type="button" class="toggle__btn" data-side="side">Side</button>
+        </div>
+      </div>
+      <div class="photo-stage" id="stage">
+        <img id="stagePhoto" alt="Фото с выделенными точками метрики" />
+        <canvas id="stageCanvas" width="600" height="800"></canvas>
+        <div class="photo-tile__empty" id="stageEmpty" style="display: none;">Нет кадра</div>
+      </div>
+      <p class="note" style="margin-top: 12px;">
+        Выделены точки и оси, которые участвуют в расчёте именно этой метрики.
+        На боковом кадре разметка не строится: профильные точки используются
+        только для выступания подбородка.
+      </p>
+    </section>
+
+    <!-- Tabs -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Подробно</h2>
+        <span class="section-head__hint">4 раздела</span>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Разделы метрики">
+        <button type="button" class="tabs__btn is-active" data-tab="overview"
+                role="tab">Overview</button>
+        <button type="button" class="tabs__btn" data-tab="simulate"
+                role="tab">Simulate</button>
+        <button type="button" class="tabs__btn" data-tab="celebrities"
+                role="tab">Celebrities</button>
+        <button type="button" class="tabs__btn" data-tab="edit"
+                role="tab">Edit</button>
+      </div>
+
+      <!-- Tab: Overview -->
+      <div class="tabpanel is-active" id="tab-overview" role="tabpanel">
+        <div class="card" style="margin-top: 14px;">
+          <p class="card__label">About This Metric</p>
+          <div class="prose" id="aboutText" style="margin-top: 10px;"></div>
+        </div>
+
+        <div class="card" style="margin-top: 14px;">
+          <p class="card__label">Технические параметры</p>
+          <div style="margin-top: 10px;">
+            <div class="kv">
+              <span class="kv__k">Категория</span>
+              <span class="kv__v" id="metaCategory">—</span>
+            </div>
+            <div class="kv">
+              <span class="kv__k">Ключ метрики</span>
+              <span class="kv__v" id="metaKey">—</span>
+            </div>
+            <div class="kv">
+              <span class="kv__k">Значение</span>
+              <span class="kv__v" id="metaValue">—</span>
+            </div>
+            <div class="kv">
+              <span class="kv__k">Референсный коридор</span>
+              <span class="kv__v" id="metaRange">—</span>
+            </div>
+            <div class="kv">
+              <span class="kv__k">Центр коридора</span>
+              <span class="kv__v" id="metaCenter">—</span>
+            </div>
+            <div class="kv">
+              <span class="kv__k">Сигма</span>
+              <span class="kv__v" id="metaSigma">—</span>
+            </div>
+            <div class="kv">
+              <span class="kv__k">Источник</span>
+              <span class="kv__v" id="metaSource">—</span>
+            </div>
+            <div class="kv">
+              <span class="kv__k">Перцентиль</span>
+              <span class="kv__v" id="metaPercentile">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 14px;">
+          <p class="card__label">Как работает оценка</p>
+          <div class="prose" style="margin-top: 10px;">
+            <p>
+              Балл считается по формуле гауссова распределения:
+              10 × exp(−(x − центр)² / (2σ²)). В центре референсного коридора
+              метрика получает 10 баллов, на границе коридора — около 8.7.
+            </p>
+            <p>
+              Такой подход отличается от линейной шкалы: он не наказывает за
+              небольшие отклонения внутри нормы и одинаково относится к
+              отклонениям в обе стороны.
+            </p>
+            <p>
+              Цвет балла: бирюзовый от 8.0, зелёный от 6.0, бежевый от 4.0,
+              розовый ниже 4.0.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab: Simulate -->
+      <div class="tabpanel" id="tab-simulate" role="tabpanel">
+        <div class="card" style="margin-top: 14px;">
+          <div class="sim-row">
+            <span class="card__label" id="simMetricLabel">—</span>
+            <span class="sim-value" id="simValue">—</span>
+          </div>
+          <input type="range" class="range" id="simRange" min="0" max="100" value="50"
+                 aria-label="Смоделированное значение метрики" />
+          <div id="simScaleHost" style="margin-top: 4px;"></div>
+
+          <div class="sim-result">
+            <div>
+              <p class="card__label">Новый балл</p>
+              <div class="sim-delta" id="simScore">—</div>
+            </div>
+            <div style="margin-left: auto; text-align: right;">
+              <p class="card__label">Разница</p>
+              <div class="sim-delta" id="simDelta">—</div>
+            </div>
+          </div>
+
+          <p class="note" style="margin-top: 12px;" id="simHint">—</p>
+
+          <div class="row" style="margin-top: 14px;">
+            <button type="button" class="btn btn--ghost" id="simResetBtn"
+                    style="flex: 1 1 0;">Сбросить</button>
+            <button type="button" class="btn btn--primary" id="simIdealBtn"
+                    style="flex: 1 1 0;">В центр нормы</button>
+          </div>
+        </div>
+
+        <p class="note" style="margin-top: 14px;">
+          Симуляция меняет только математику балла. Она показывает, как оценка
+          отреагирует на другое значение метрики, и не является прогнозом
+          результата какой-либо процедуры.
+        </p>
+      </div>
+
+      <!-- Tab: Celebrities -->
+      <div class="tabpanel" id="tab-celebrities" role="tabpanel">
+        <div class="card" style="margin-top: 14px;">
+          <p class="card__label">Ориентиры для сравнения</p>
+          <div id="celebList" style="margin-top: 8px;"></div>
+          <p class="note" style="margin-top: 14px;" id="celebNote">—</p>
+        </div>
+      </div>
+
+      <!-- Tab: Edit -->
+      <div class="tabpanel" id="tab-edit" role="tabpanel">
+        <div class="card" style="margin-top: 14px;">
+          <div class="field">
+            <label class="field__label" for="noteArea">Личная заметка</label>
+            <textarea class="field__area" id="noteArea"
+                      placeholder="Например: переснять при дневном свете, проверить наклон головы."></textarea>
+          </div>
+          <div class="row" style="margin-top: 12px;">
+            <button type="button" class="btn btn--primary" id="noteSave"
+                    style="flex: 1 1 0;">Сохранить</button>
+            <button type="button" class="btn btn--ghost" id="noteClear"
+                    style="flex: 1 1 0;">Очистить</button>
+          </div>
+          <div class="row" style="margin-top: 10px;">
+            <span class="saved-flag" id="savedFlag">Сохранено в браузере</span>
+          </div>
+        </div>
+
+        <div class="card" style="margin-top: 14px;">
+          <p class="card__label">Экспорт</p>
+          <p class="card__sub">
+            Скопировать значение метрики и её референс в буфер обмена.
+          </p>
+          <button type="button" class="btn btn--ghost btn--full" id="copyBtn"
+                  style="margin-top: 12px;">Скопировать метрику</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- Category specific notes -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Особенности категории</h2>
+        <span class="section-head__hint">размеры элементов</span>
+      </div>
+      <div class="card">
+        <div class="prose">
+          <p>
+            Все метрики здесь нормализованы на ширину или высоту лица. Это значит, что оценивается не абсолютный размер элемента, а его пропорция относительно всего лица.
+          </p>
+          <p>
+            Крупный нос на широком лице может дать более высокий балл, чем средний нос на узком лице — потому что важна согласованность, а не размер сам по себе.
+          </p>
+          <p>
+            Nasal Index используется в антропологии больше века и различается между популяциями. Именно поэтому референсы для него заданы отдельно по антропологическому типу.
+          </p>
+          <p>
+            Черты лица — самая стабильная категория во времени. После окончания роста скелета значения меняются минимально, поэтому повторные замеры имеют смысл в основном для проверки качества кадра.
+          </p>
+        </div>
+      </div>
+    </section>
+    <!-- Sibling metrics -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Другие метрики категории</h2>
+        <span class="section-head__hint" id="pagerPos">—</span>
+      </div>
+      <div class="ratio-list" id="siblingList"></div>
+    </section>
+
+    <!-- Pager -->
+    <nav class="pager" aria-label="Навигация по метрикам">
+      <button type="button" class="pager__btn" id="prevBtn">
+        <span class="pager__arrow">‹</span>
+        <span style="min-width: 0;">
+          <span class="pager__dir">Prev</span>
+          <span class="pager__name" id="prevName">—</span>
+        </span>
+      </button>
+      <button type="button" class="pager__btn pager__btn--next" id="nextBtn">
+        <span style="min-width: 0;">
+          <span class="pager__dir">Next</span>
+          <span class="pager__name" id="nextName">—</span>
+        </span>
+        <span class="pager__arrow">›</span>
+      </button>
+    </nav>
+
+    <a class="btn btn--ghost btn--full" id="catLink" href="/analysis/features.html"
+       style="margin-top: 14px;">Вся категория</a>
+    <a class="btn btn--quiet btn--full" href="/" style="margin-top: 6px;">
+      К общему отчёту
+    </a>
+
+    <p class="foot">
+      FACE LAB · Features · детальный разбор метрики<br />
+      Референсы — эстетические ориентиры сервиса, не медицинские нормы.
+    </p>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/shared.js"></script>
+  <script src="/detail-page.js"></script>
+  <script>
+    window.FaceLabDetail.init({ category: "features" });
+  </script>
+</body>
+</html>

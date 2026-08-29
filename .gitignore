@@ -1,0 +1,20 @@
+﻿__pycache__/
+*.py[cod]
+*.class
+*.so
+
+# Database
+*.db
+*.sqlite3
+*.db-journal
+*.db-wal
+
+# MediaPipe model (auto-downloaded on server startup)
+models/*.task
+
+# Local binaries & temp
+cloudflared.exe
+.tunnel_url
+.env
+*.log
+.system_generated/

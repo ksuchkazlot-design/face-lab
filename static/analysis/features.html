@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fbfbfb" />
+  <title>Features — FACE LAB</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+  <!-- Sticky header: photo + score + Front/Side toggle -->
+  <header class="sticky" id="stickyHeader">
+    <div class="sticky__inner">
+      <button type="button" class="back-btn" id="backBtn" aria-label="Назад">‹</button>
+      <img class="sticky__thumb" id="stickyThumb" alt="Ваше фото" />
+      <div class="sticky__meta">
+        <div class="sticky__title" id="stickyTitle">Features</div>
+        <div class="sticky__sub" id="stickySub">—</div>
+      </div>
+      <div class="cat-card__score">
+        <div class="cat-card__value" id="headerScore">—</div>
+      </div>
+    </div>
+  </header>
+
+  <main class="shell" id="page">
+
+    <!-- Hero -->
+    <section style="padding-top: 22px;">
+      <p class="eyebrow">Категория 4 из 6</p>
+      <h1 class="display">Features</h1>
+      <p class="lede">
+        Черты лица — размеры отдельных элементов относительно общей геометрии. Эти значения почти не меняются со временем, поэтому работают в основном через акцентирование.
+      </p>
+    </section>
+
+    <!-- Score card -->
+    <section class="card card--dark" style="margin-top: 20px;">
+      <div class="overall">
+        <div class="dial">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="dial__track" cx="60" cy="60" r="52"></circle>
+            <circle class="dial__value" id="catDial" cx="60" cy="60" r="52"
+                    stroke-dasharray="326.7" stroke-dashoffset="326.7"></circle>
+          </svg>
+          <div class="dial__center">
+            <div>
+              <div class="dial__num" id="catScore">0.0</div>
+              <div class="dial__unit">из 10</div>
+            </div>
+          </div>
+        </div>
+        <div class="overall__meta">
+          <p class="card__label">Category Score</p>
+          <div class="overall__rating" id="catRating">—</div>
+          <p class="overall__note" id="catNote">—</p>
+          <span class="pill-stat">
+            <strong id="catPercentile">—</strong>
+            <span>перцентиль</span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Photo with Front/Side toggle -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Кадр</h2>
+        <div class="toggle" id="photoToggle" role="group" aria-label="Выбор кадра">
+          <button type="button" class="toggle__btn is-active" data-side="front">Front</button>
+          <button type="button" class="toggle__btn" data-side="side">Side</button>
+        </div>
+      </div>
+      <div class="photo-stage" id="stage">
+        <img id="stagePhoto" alt="Ваше фото с разметкой" />
+        <canvas id="stageCanvas" width="600" height="800"></canvas>
+        <div class="photo-tile__empty" id="stageEmpty" style="display: none;">Нет кадра</div>
+      </div>
+    </section>
+
+    <!-- Ratio rows -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Метрики категории</h2>
+        <span class="section-head__hint" id="metricCount">—</span>
+      </div>
+      <div class="ratio-list" id="ratioList">
+        <div class="skeleton skeleton--row"></div>
+        <div class="skeleton skeleton--row"></div>
+        <div class="skeleton skeleton--row"></div>
+      </div>
+    </section>
+
+    <!-- Key strengths -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Key Strengths</h2>
+        <span class="section-head__hint">сильные стороны</span>
+      </div>
+      <div class="card">
+        <ul class="insight-list" id="strengthsList"></ul>
+      </div>
+    </section>
+
+    <!-- Areas of improvement -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Areas of Improvement</h2>
+        <span class="section-head__hint">зоны роста</span>
+      </div>
+      <div class="card">
+        <ul class="insight-list" id="improvementsList"></ul>
+      </div>
+    </section>
+
+    <!-- Distribution inside the category -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Разброс по метрикам</h2>
+        <span class="section-head__hint">оценки 0–10</span>
+      </div>
+      <div class="card">
+        <div id="spreadList"></div>
+      </div>
+    </section>
+
+    <!-- About the category -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Как это считается</h2>
+        <span class="section-head__hint">метод</span>
+      </div>
+      <div class="card">
+        <div class="prose">
+          <p>
+            Все размеры нормализуются: длина глаза, ширина носа и ширина рта делятся на бизигоматическую ширину лица. Это убирает влияние разрешения кадра и дистанции съёмки.
+          </p>
+          <p>
+            Nasal Index — классический носовой индекс: ширина крыльев носа, делённая на длину носа от переносицы до основания.
+          </p>
+          <p>
+            Philtrum Length — расстояние от основания носа до кромки верхней губы относительно высоты лица.
+          </p>
+          <p>
+            Upper to Lower Lip — отношение толщины верхней губы к нижней. Значение около 0.7 означает, что нижняя губа заметно полнее.
+          </p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Reference table -->
+    <section>
+      <div class="section-head">
+        <h2 class="section-head__title">Референсы</h2>
+        <span class="section-head__hint" id="refMeta">—</span>
+      </div>
+      <div class="card">
+        <div id="refTable"></div>
+      </div>
+    </section>
+
+    <!-- Category navigation -->
+    <nav class="pager" aria-label="Другие категории">
+      <button type="button" class="pager__btn" id="prevBtn">
+        <span class="pager__arrow">‹</span>
+        <span style="min-width: 0;">
+          <span class="pager__dir">Назад</span>
+          <span class="pager__name" id="prevName">—</span>
+        </span>
+      </button>
+      <button type="button" class="pager__btn pager__btn--next" id="nextBtn">
+        <span style="min-width: 0;">
+          <span class="pager__dir">Далее</span>
+          <span class="pager__name" id="nextName">—</span>
+        </span>
+        <span class="pager__arrow">›</span>
+      </button>
+    </nav>
+
+    <a class="btn btn--ghost btn--full" href="/" style="margin-top: 14px;">
+      Вернуться к отчёту
+    </a>
+
+    <p class="foot">
+      FACE LAB · Features · расчёт по 478 точкам<br />
+      Референсы — эстетические ориентиры сервиса, не медицинские нормы.
+    </p>
+  </main>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script src="/shared.js"></script>
+  <script src="/analysis-page.js"></script>
+  <script>
+    window.FaceLabPage.init({
+      key: "features",
+      title: "Features",
+      index: 3,
+      overlayPairs: [[33, 133], [263, 362], [129, 358], [61, 291], [168, 2]]
+    });
+  </script>
+</body>
+</html>

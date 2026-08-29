@@ -1,0 +1,11 @@
+﻿services:
+  - type: web
+    name: face-lab
+    runtime: docker
+    plan: free
+    region: frankfurt
+    envVars:
+      - key: PORT
+        value: 8000
+      - key: FACE_LAB_BOT
+        value: 1
