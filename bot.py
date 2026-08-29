@@ -69,7 +69,7 @@ DURATIONS = {
 # ---------------------------------------------------------------------------
 
 def _webapp_url() -> str:
-    url = os.environ.get("FACE_LAB_WEBAPP_URL", "").strip()
+    url = os.environ.get("FACE_LAB_WEBAPP_URL", "").strip() or os.environ.get("RENDER_EXTERNAL_URL", "").strip()
     if url:
         return url.rstrip("/")
     tunnel_file = os.path.join(os.path.dirname(__file__), ".tunnel_url")
