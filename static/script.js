@@ -706,6 +706,7 @@
     renderPhotos();
     renderChart(data.chart);
     renderInsights(data);
+    renderLooksmaxxing(data);
     renderTech(data);
     renderAnalysisGroups(data);
     renderPlan(data);
@@ -1116,6 +1117,78 @@
       } else {
         iBtn.style.display = "none";
       }
+    }
+  }
+
+  function renderLooksmaxxing(data) {
+    var lm = data.looksmaxxing;
+    if (!lm) {
+      return;
+    }
+    var card = $("looksmaxCard");
+    if (!card) return;
+
+    var tierBadge = $("looksmaxTierBadge");
+    if (tierBadge) {
+      tierBadge.textContent = lm.tier || (data.overall && data.overall.rating_ru) || "HTN";
+      tierBadge.style.color = colorVar(data.overall.color);
+      tierBadge.style.borderColor = colorVar(data.overall.color);
+    }
+
+    var pslVal = $("looksmaxPslScore");
+    if (pslVal) {
+      pslVal.innerHTML = fmt(lm.psl_score, 1) + '<small>/8</small>';
+    }
+
+    var curVal = $("looksmaxCurrentScore");
+    if (curVal) {
+      curVal.innerHTML = fmt(lm.overall_score || data.overall.score, 1) + '<small>/10</small>';
+    }
+
+    var potVal = $("looksmaxPotentialScore");
+    if (potVal) {
+      potVal.innerHTML = fmt(lm.potential_score, 1) + '<small>/10</small>';
+    }
+
+    // Archetypes
+    var archGrid = $("looksmaxArchetypesGrid");
+    if (archGrid && lm.archetypes) {
+      archGrid.innerHTML = "";
+      Object.keys(lm.archetypes).forEach(function (key) {
+        var item = lm.archetypes[key];
+        var div = document.createElement("div");
+        div.className = "looksmax-arch-item";
+        div.innerHTML =
+          '<span class="looksmax-arch-badge">' + item.badge + '</span>' +
+          '<p class="looksmax-arch-desc">' + item.desc + '</p>';
+        archGrid.appendChild(div);
+      });
+    }
+
+    // Softmaxxing
+    var softList = $("looksmaxSoftmaxList");
+    if (softList && lm.softmaxxing) {
+      softList.innerHTML = "";
+      lm.softmaxxing.forEach(function (item) {
+        var div = document.createElement("div");
+        div.className = "looksmax-proto-item";
+        div.innerHTML =
+          '<div class="looksmax-proto-title">' + (item.title || "Протокол") + '</div>' +
+          '<p class="looksmax-proto-action">' + (item.action || item) + '</p>';
+        softList.appendChild(div);
+      });
+    }
+
+    // Hardmaxxing
+    var hardList = $("looksmaxHardmaxList");
+    if (hardList && lm.hardmaxxing) {
+      hardList.innerHTML = "";
+      lm.hardmaxxing.forEach(function (tip) {
+        var div = document.createElement("div");
+        div.className = "looksmax-hard-item";
+        div.textContent = tip;
+        hardList.appendChild(div);
+      });
     }
   }
 

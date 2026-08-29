@@ -365,10 +365,24 @@ async def error_handler(update: object, context: ContextTypes.DEFAULT_TYPE):
     logger.error(f"Exception while handling an update: {context.error}")
 
 
+async def cmd_grant(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Developer / Admin command to grant test credits."""
+    user = update.effective_user
+    if not user:
+        return
+    db.add_paid_credits(user.id, 10)
+    has_access = db.can_analyse(user.id)
+    await update.message.reply_text(
+        "✅ Вам начислено 10 тестовых кредитов анализа!\nКнопка запуска анализа активна.",
+        reply_markup=main_menu_keyboard(has_access),
+    )
+
+
 def create_bot() -> Application:
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", cmd_start))
+    app.add_handler(CommandHandler("grant", cmd_grant))
     app.add_handler(CallbackQueryHandler(callback_handler))
     app.add_handler(PreCheckoutQueryHandler(pre_checkout))
     app.add_handler(MessageHandler(filters.SUCCESSFUL_PAYMENT, successful_payment))

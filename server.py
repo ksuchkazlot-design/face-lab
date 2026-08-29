@@ -22,18 +22,21 @@ Run:
 
 from __future__ import annotations
 
+import io
 import math
 import os
 import sys
 import time
 import json
 import urllib.request
+import traceback
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import asyncio
 import cv2
 import numpy as np
+from PIL import Image, ImageOps
 from pydantic import BaseModel
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -60,7 +63,7 @@ MODEL_URL = (
 
 MAX_UPLOAD_BYTES = 18 * 1024 * 1024
 MAX_WORK_SIZE = 1400          # longest side used for landmark detection
-EDGE_SCORE = 8.7              # score assigned at the edge of an ideal band
+EDGE_SCORE = 6.2              # strict Looksmaxxing score at the edge of an ideal band (was 8.7)
 
 COLOR_TEAL = "teal"
 COLOR_GREEN = "green"
@@ -450,7 +453,7 @@ def band_sigma(lo: float, hi: float) -> float:
 
 
 def gaussian_score(value: float, lo: float, hi: float) -> float:
-    """score = 10 * exp(-((value - center)^2) / (2 * sigma^2)), with smooth decay beyond band."""
+    """score = 10 * exp(-((value - center)^2) / (2 * sigma^2)), with strict Looksmaxxing decay beyond band."""
     center = (lo + hi) / 2.0
     sigma = band_sigma(lo, hi)
     dist_val = abs(value - center)
@@ -459,14 +462,14 @@ def gaussian_score(value: float, lo: float, hi: float) -> float:
         raw = 10.0 * math.exp(-(dist_val ** 2) / (2.0 * sigma * sigma))
     else:
         extra = (dist_val - half) / half
-        raw = 8.7 / (1.0 + 0.9 * (extra ** 1.3))
+        raw = EDGE_SCORE / (1.0 + 1.25 * (extra ** 1.25))
     return round(max(0.0, min(10.0, raw)), 2)
 
 
 def score_color(score: float) -> str:
-    if score >= 8.0:
+    if score >= 7.2:
         return COLOR_TEAL
-    if score >= 6.0:
+    if score >= 5.8:
         return COLOR_GREEN
     if score >= 4.0:
         return COLOR_BEIGE
@@ -474,17 +477,17 @@ def score_color(score: float) -> str:
 
 
 def score_label_ru(score: float) -> str:
-    if score >= 9.0:
-        return "Исключительно"
-    if score >= 8.0:
-        return "Отлично"
-    if score >= 6.5:
-        return "Хорошо"
-    if score >= 5.0:
-        return "Средне"
-    if score >= 3.5:
-        return "Ниже среднего"
-    return "Есть над чем работать"
+    if score >= 8.5:
+        return "Chico / Chad Tier (Топ 1%)"
+    if score >= 7.2:
+        return "Chadlite / Топ-модель (Топ 10%)"
+    if score >= 5.8:
+        return "High Tier Normie (HTN)"
+    if score >= 4.5:
+        return "Mid Tier Normie (MTN)"
+    if score >= 3.2:
+        return "Low Tier Normie (LTN)"
+    return "Требуется Hardmaxxing"
 
 
 def percentile_from_score(score: float) -> int:
@@ -686,44 +689,61 @@ def jaw_contour_analysis(pts: List[Tuple[float, float]]) -> Dict[str, Any]:
       ramus_height – vertical distance from gonion to chin
       jaw_body_len – direct distance from gonion to chin
     """
-    # Pair widths at each jawline level (skip index 0 = chin itself)
-    pair_widths: List[Tuple[float, int]] = []
-    for i in range(1, min(len(_JAWLINE_LEFT), len(_JAWLINE_RIGHT))):
-        l_pt = pts[_JAWLINE_LEFT[i]]
-        r_pt = pts[_JAWLINE_RIGHT[i]]
-        pair_widths.append((dist(l_pt, r_pt), i))
+    try:
+        # Pair widths at each jawline level (skip index 0 = chin itself)
+        pair_widths: List[Tuple[float, int]] = []
+        for i in range(1, min(len(_JAWLINE_LEFT), len(_JAWLINE_RIGHT))):
+            if _JAWLINE_LEFT[i] < len(pts) and _JAWLINE_RIGHT[i] < len(pts):
+                l_pt = pts[_JAWLINE_LEFT[i]]
+                r_pt = pts[_JAWLINE_RIGHT[i]]
+                pair_widths.append((dist(l_pt, r_pt), i))
 
-    # Jaw width = max width in the jaw region (indices 1-7, excluding cheekbone area)
-    jaw_pairs = [pw for pw in pair_widths if pw[1] <= 7]
-    if not jaw_pairs:
-        jaw_pairs = pair_widths
-    jaw_width, gonion_level = max(jaw_pairs, key=lambda x: x[0])
+        # Jaw width = max width in the jaw region (indices 1-7, excluding cheekbone area)
+        jaw_pairs = [pw for pw in pair_widths if pw[1] <= 7]
+        if not jaw_pairs:
+            jaw_pairs = pair_widths
+        if jaw_pairs:
+            jaw_width, gonion_level = max(jaw_pairs, key=lambda x: x[0])
+        else:
+            jaw_width, gonion_level = dist(pts[LM_ZYGO_L], pts[LM_ZYGO_R]) * 0.82, 4
 
-    # Chin width = narrowest among the 3 closest points to chin
-    chin_pairs = pair_widths[:3]
-    chin_width = min(pw[0] for pw in chin_pairs) if chin_pairs else jaw_width * 0.35
+        # Chin width = narrowest among the 3 closest points to chin
+        chin_pairs = pair_widths[:3]
+        chin_width = min(pw[0] for pw in chin_pairs) if chin_pairs else jaw_width * 0.35
 
-    gonion_l = pts[_JAWLINE_LEFT[gonion_level]]
-    gonion_r = pts[_JAWLINE_RIGHT[gonion_level]]
-    chin_pt = pts[152]
+        gonion_l = pts[_JAWLINE_LEFT[gonion_level]] if gonion_level < len(_JAWLINE_LEFT) else pts[LM_JAW_L_MID]
+        gonion_r = pts[_JAWLINE_RIGHT[gonion_level]] if gonion_level < len(_JAWLINE_RIGHT) else pts[LM_JAW_R_MID]
+        chin_pt = pts[152] if len(pts) > 152 else pts[LM_MENTON]
 
-    gonion_y = (gonion_l[1] + gonion_r[1]) / 2.0
-    chin_y = chin_pt[1]
+        gonion_y = (gonion_l[1] + gonion_r[1]) / 2.0
+        chin_y = chin_pt[1]
 
-    ramus_height = abs(gonion_y - chin_y)
-    gonion_center = ((gonion_l[0] + gonion_r[0]) / 2.0, gonion_y)
-    jaw_body_len = dist(gonion_center, chin_pt)
+        ramus_height = abs(gonion_y - chin_y)
+        gonion_center = ((gonion_l[0] + gonion_r[0]) / 2.0, gonion_y)
+        jaw_body_len = dist(gonion_center, chin_pt)
 
-    return {
-        "jaw_width": jaw_width,
-        "chin_width": chin_width,
-        "gonion_y": gonion_y,
-        "gonion_left": gonion_l,
-        "gonion_right": gonion_r,
-        "gonion_level": gonion_level,
-        "ramus_height": ramus_height,
-        "jaw_body_len": jaw_body_len,
-    }
+        return {
+            "jaw_width": jaw_width,
+            "chin_width": chin_width,
+            "gonion_y": gonion_y,
+            "gonion_left": gonion_l,
+            "gonion_right": gonion_r,
+            "gonion_level": gonion_level,
+            "ramus_height": ramus_height,
+            "jaw_body_len": jaw_body_len,
+        }
+    except Exception:
+        face_w = dist(pts[LM_ZYGO_L], pts[LM_ZYGO_R])
+        return {
+            "jaw_width": face_w * 0.82,
+            "chin_width": face_w * 0.28,
+            "gonion_y": (pts[LM_JAW_L_MID][1] + pts[LM_JAW_R_MID][1]) / 2.0,
+            "gonion_left": pts[LM_JAW_L_MID],
+            "gonion_right": pts[LM_JAW_R_MID],
+            "gonion_level": 4,
+            "ramus_height": face_w * 0.45,
+            "jaw_body_len": face_w * 0.55,
+        }
 
 
 # ---------------------------------------------------------------------------
@@ -773,15 +793,36 @@ def get_detector() -> Any:
 
 
 def decode_upload(raw: bytes) -> np.ndarray:
-    """Decode uploaded bytes into a BGR image, downscaled to a working size."""
+    """Decode uploaded bytes into a BGR image with EXIF orientation handling and downscaling."""
     if not raw:
         raise HTTPException(status_code=400, detail="Пустой файл изображения.")
     if len(raw) > MAX_UPLOAD_BYTES:
         raise HTTPException(status_code=413, detail="Файл больше 18 МБ.")
-    buffer = np.frombuffer(raw, dtype=np.uint8)
-    image = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
+
+    image: Optional[np.ndarray] = None
+
+    # 1. Try PIL first: automatically handles smartphone EXIF orientation & HEIC/WebP/JPEG
+    try:
+        pil_img = Image.open(io.BytesIO(raw))
+        pil_img = ImageOps.exif_transpose(pil_img)
+        if pil_img.mode != "RGB":
+            pil_img = pil_img.convert("RGB")
+        rgb_arr = np.array(pil_img)
+        image = cv2.cvtColor(rgb_arr, cv2.COLOR_RGB2BGR)
+    except Exception:
+        pass
+
+    # 2. Fallback to cv2.imdecode
     if image is None:
-        raise HTTPException(status_code=400, detail="Не удалось прочитать изображение.")
+        buffer = np.frombuffer(raw, dtype=np.uint8)
+        image = cv2.imdecode(buffer, cv2.IMREAD_COLOR)
+
+    if image is None or image.size == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="Не удалось прочитать изображение. Загрузите фото в формате JPG или PNG."
+        )
+
     height, width = image.shape[:2]
     longest = max(height, width)
     if longest > MAX_WORK_SIZE:
@@ -792,16 +833,44 @@ def decode_upload(raw: bytes) -> np.ndarray:
 
 
 def detect_landmarks(image_bgr: np.ndarray) -> Tuple[List[Tuple[float, float]], Dict[str, float]]:
-    """Return pixel-space landmarks plus a small blendshape summary."""
+    """Return pixel-space landmarks with multi-angle rotation & contrast fallbacks."""
     detector = get_detector()
+
+    # Pass 1: Standard orientation
     rgb = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2RGB)
-    mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb)
-    result = detector.detect(mp_image)
+    result = detector.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb))
+
+    # Pass 2: Phone camera rotation fallback (90 deg CW, 90 deg CCW, 180 deg)
+    if not result.face_landmarks:
+        for rot in (cv2.ROTATE_90_CLOCKWISE, cv2.ROTATE_90_COUNTERCLOCKWISE, cv2.ROTATE_180):
+            rotated = cv2.rotate(image_bgr, rot)
+            rot_rgb = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
+            res_rot = detector.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=rot_rgb))
+            if res_rot.face_landmarks:
+                image_bgr = rotated
+                result = res_rot
+                break
+
+    # Pass 3: Contrast / brightness boost (CLAHE) for dim or shadowed selfie
+    if not result.face_landmarks:
+        try:
+            lab = cv2.cvtColor(image_bgr, cv2.COLOR_BGR2LAB)
+            clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+            lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+            boosted = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+            b_rgb = cv2.cvtColor(boosted, cv2.COLOR_BGR2RGB)
+            res_boost = detector.detect(mp.Image(image_format=mp.ImageFormat.SRGB, data=b_rgb))
+            if res_boost.face_landmarks:
+                result = res_boost
+        except Exception:
+            pass
+
     if not result.face_landmarks:
         raise HTTPException(
             status_code=422,
-            detail="Лицо не найдено. Нужен кадр анфас, лицо целиком, хорошее освещение.",
+            detail="Лицо не найдено на фото. Пожалуйста, сфотографируйтесь прямо перед камерой при хорошем освещении (без очков и маски).",
         )
+
     height, width = image_bgr.shape[:2]
     points = [(lm.x * width, lm.y * height) for lm in result.face_landmarks[0]]
     shapes: Dict[str, float] = {}
@@ -1249,6 +1318,145 @@ def build_gaussian_chart(overall: float) -> Dict[str, Any]:
     }
 
 
+def build_looksmaxxing_summary(raw: Dict[str, float], overall_score: float, gender: str) -> Dict[str, Any]:
+    """Generates structured Looksmaxxing assessment, PSL score, archetypes, and actionable protocols."""
+    canthal = raw.get("canthal_tilt", 0.0)
+    gonial = raw.get("gonial_angle", 124.0)
+    chin_proj = raw.get("chin_projection", 165.0)
+    cheek = raw.get("cheek_fullness", 50.0)
+    mandible = raw.get("mandible_definition", 1.3)
+
+    # Eye archetype (Hunter vs Prey)
+    if canthal >= 3.0:
+        eye_archetype = {
+            "name": "Hunter Eyes",
+            "tier": "S-Tier",
+            "badge": "🟢 Hunter Eyes (Положительный тилт)",
+            "desc": f"Положительный угол наклона глаз (+{round(canthal, 1)}°). Хищный модельный взгляд, минимальное обнажение склеры.",
+            "status": "optimal",
+        }
+    elif canthal >= 0.0:
+        eye_archetype = {
+            "name": "Neutral Eyes",
+            "tier": "A-Tier",
+            "badge": "🟡 Neutral Eyes (Сбалансированный тилт)",
+            "desc": f"Нейтральный угол ({round(canthal, 1)}°). Сбалансированный разрез без выраженной агрессии или утомлённости.",
+            "status": "normal",
+        }
+    else:
+        eye_archetype = {
+            "name": "Prey Eyes",
+            "tier": "C-Tier",
+            "badge": "🔴 Prey Eyes (Отрицательный тилт)",
+            "desc": f"Отрицательный угол ({round(canthal, 1)}°). Внешние углы опущены, создают усталый/грустный взгляд. Требует проработки век.",
+            "status": "flawed",
+        }
+
+    # Jaw archetype (Chad Jaw vs High Gonial)
+    if gonial <= 120.0 and mandible >= 1.4:
+        jaw_archetype = {
+            "name": "Chad Jawline",
+            "tier": "S-Tier",
+            "badge": "🟢 Chad Jawline (Острый угол 110-120°)",
+            "desc": f"Гониальный угол {round(gonial, 1)}°. Идеальная резкая линия нижней челюсти, выраженные жевательные мышцы.",
+            "status": "optimal",
+        }
+    elif gonial <= 126.0:
+        jaw_archetype = {
+            "name": "Defined Jaw",
+            "tier": "B-Tier",
+            "badge": "🟡 Defined Jaw (Нормальная резкость)",
+            "desc": f"Гониальный угол {round(gonial, 1)}°. Хороший контур, но можно улучшить чёткость снижением подкожного жира.",
+            "status": "normal",
+        }
+    else:
+        jaw_archetype = {
+            "name": "High Gonial / Soft Jaw",
+            "tier": "C-Tier",
+            "badge": "🔴 Soft Jaw (>126° размытый угол)",
+            "desc": f"Гониальный угол {round(gonial, 1)}°. Линия челюсти сглажена, слабая костная опора. Нужен мьюинг и жевание мастики.",
+            "status": "flawed",
+        }
+
+    # Chin projection (Forward grown vs Recessed)
+    if chin_proj >= 165.0:
+        chin_archetype = {
+            "name": "Forward Grown",
+            "tier": "S-Tier",
+            "badge": "🟢 Forward Grown (Развитый подбородок)",
+            "desc": "Отличная фронтальная проекция подбородка, правильное развитие максиллы и нижней челюсти.",
+            "status": "optimal",
+        }
+    else:
+        chin_archetype = {
+            "name": "Recessed Chin",
+            "tier": "C-Tier",
+            "badge": "🔴 Recessed Chin (Рецессия подбородка)",
+            "desc": "Подбородок смещён назад относительно вертикали губ. Характерно при ротовом дыхании в детстве.",
+            "status": "flawed",
+        }
+
+    # Cheeks (Hollow vs Bloated)
+    if cheek <= 44.0:
+        cheek_archetype = {
+            "name": "Hollow Cheeks",
+            "tier": "S-Tier",
+            "badge": "🟢 Hollow Cheeks (Впалые скулы)",
+            "desc": "Минимальный объём щёчного жира, выраженная тень под скулами — классический подиумный признак.",
+            "status": "optimal",
+        }
+    else:
+        cheek_archetype = {
+            "name": "Bloated / High Buccal Fat",
+            "tier": "B-Tier",
+            "badge": "🟡 Bloated / Округлость",
+            "desc": "Отёчность или повышенный процент жира скрывает скуловую кость. Необходим деблоатинг.",
+            "status": "normal",
+        }
+
+    # PSL score (1.0 .. 8.0 scale popular in looksmaxxing)
+    psl_score = round(max(1.0, min(8.0, overall_score * 0.78)), 1)
+    potential_score = round(min(9.7, overall_score + 1.6 + (1.0 if overall_score < 5.5 else 0.4)), 1)
+
+    # Actionable Softmaxxing protocol
+    softmaxxing = [
+        {"title": "Деблоатинг (Debloating)", "action": "Снизьте потребление натрия (<1500 мг), исключите сахар и быстрые углеводы. Пейте 2.5-3 л чистой воды ежедневно + калий (бананы, шпинат), чтобы согнать воду с лица."},
+        {"title": "Мьюинг (Mewing)", "action": "Держите всё тело языка прижатым к нёбу (включая заднюю треть) 24/7. Зубы слегка сомкнуты, губы закрыты, дыхание строго через нос."},
+        {"title": "Сушка (10-12% Body Fat)", "action": "Снижение общего процента жира в теле до 10-12% (для мужчин) обнажит скрытую костную структуру скул и углов челюсти."},
+        {"title": "Тренировка жевательных мышц", "action": "Жевание твёрдой смолы (мастика Falim/Mastic gum) по 20-30 минут в день для гипертрофии masseter и расширения нижней трети лица."},
+        {"title": "Коррекция осанки (Neck Posture)", "action": "Устраните наклон головы вперёд ('текстовая шея'). Прямая шея визуально натягивает кожу под подбородком и увеличивает проекцию."},
+        {"title": "Скинкеар протокол", "action": "SPF 50+ каждое утро, ретинол 0.05% вечером 3 раза в неделю, крем с керамидами для плотности кожного барьера."},
+    ]
+
+    # Hardmaxxing considerations
+    hardmaxxing = []
+    if canthal < 0.0:
+        hardmaxxing.append("Кантопексия / Кантопластика — хирургический подъём наружного угла глаза при стойком отрицательном наклоне.")
+    if gonial > 126.0:
+        hardmaxxing.append("Импланты углов нижней челюсти (Jaw angle implants) или моделирование плотным филлером Radiesse/гиалуроном.")
+    if chin_proj < 165.0:
+        hardmaxxing.append("Скользящая гениопластика (Sliding genioplasty) или ментопластика имплантом для выдвижения подбородка вперёд.")
+    if cheek > 50.0:
+        hardmaxxing.append("Удаление комков Биша (Buccal fat removal) при генетически круглом лице без лишнего веса.")
+    if not hardmaxxing:
+        hardmaxxing.append("Костный скелет гармоничен. Хирургические вмешательства не требуются, сосредоточьтесь на Softmaxxing.")
+
+    return {
+        "psl_score": psl_score,
+        "overall_score": overall_score,
+        "potential_score": potential_score,
+        "tier": score_label_ru(overall_score),
+        "archetypes": {
+            "eyes": eye_archetype,
+            "jaw": jaw_archetype,
+            "chin": chin_archetype,
+            "cheeks": cheek_archetype,
+        },
+        "softmaxxing": softmaxxing,
+        "hardmaxxing": hardmaxxing,
+    }
+
+
 def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
             gender: str, ethnicity: str) -> Dict[str, Any]:
     """Full pipeline for one submission."""
@@ -1273,8 +1481,9 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
                     sources[k] = "profile"
             profile_landmarks = profile_pts
             profile_used = True
-        except HTTPException:
-            # A bad profile shot must not fail the whole analysis.
+        except Exception as err:
+            # A bad profile shot must never fail the whole analysis.
+            print(f"[face-lab] profile processing skipped: {err}", file=sys.stderr)
             profile_used = False
 
     raw["dimorphism_index"] = dimorphism_index(raw, gender, bands)
@@ -1302,6 +1511,8 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
     ranked = sorted(all_metrics, key=lambda m: m["score"], reverse=True)
 
     front_h, front_w = front_image.shape[:2]
+    looksmaxxing = build_looksmaxxing_summary(raw, overall, gender)
+
     return {
         "ok": True,
         "version": "1.0",
@@ -1319,6 +1530,7 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
             "percentile": percentile_from_score(overall),
             "metric_count": len(all_metrics),
         },
+        "looksmaxxing": looksmaxxing,
         "categories": categories,
         "category_order": CATEGORY_ORDER,
         "metrics": metrics_flat,
@@ -1487,6 +1699,8 @@ def api_health() -> JSONResponse:
 
 def normalise_choice(value: str, allowed: Sequence[str], field: str) -> str:
     cleaned = (value or "").strip().lower().replace(" ", "_").replace("-", "_")
+    if not cleaned:
+        return "male" if field == "gender" else "caucasian"
     if cleaned not in allowed:
         raise HTTPException(
             status_code=400,
@@ -1539,7 +1753,8 @@ async def analyze_complete(
         raise
     except Exception as error:  # noqa: BLE001 - surface a readable message to the UI
         print(f"[face-lab] analysis failed: {type(error).__name__}: {error}", file=sys.stderr)
-        raise HTTPException(status_code=500, detail="Ошибка анализа изображения.") from error
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ошибка анализа изображения: {error}") from error
 
     # --- Consume paid credit if not subscribed ---
     if user_id:

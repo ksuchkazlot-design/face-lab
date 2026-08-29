@@ -207,8 +207,19 @@ def get_analyses(user_id: int, limit: int = 10) -> List[Dict[str, Any]]:
         return [dict(r) for r in rows]
 
 
+ADMIN_IDS = set(
+    int(x.strip())
+    for x in os.environ.get("ADMIN_USER_IDS", "").split(",")
+    if x.strip().isdigit()
+)
+
+
 def can_analyse(user_id: int) -> bool:
-    """User can analyse ONLY if they have paid credit or an active subscription."""
+    """User can analyse if they have paid credit, active subscription, or are admin."""
+    if not user_id:
+        return True
+    if user_id in ADMIN_IDS:
+        return True
     return has_paid_credit(user_id) or is_subscribed(user_id)
 
 

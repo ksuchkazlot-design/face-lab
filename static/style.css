@@ -5022,3 +5022,220 @@ button:active {
   animation-delay: 0.4s;
 }
 
+/* -------------------------------------------------------------
+   LOOKSMAXXING PSL CARD & PROTOCOLS
+   ------------------------------------------------------------- */
+
+.looksmax-card {
+  background: linear-gradient(145deg, #0d1219 0%, #151d27 100%);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: var(--radius-xl);
+  padding: 24px;
+  box-shadow: 0 12px 36px -8px rgba(0, 0, 0, 0.4), 0 0 20px -6px rgba(56, 189, 248, 0.15);
+  color: #f8fafc;
+  margin-bottom: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.looksmax-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #38bdf8, #818cf8, #c084fc, #38bdf8);
+  background-size: 200% 100%;
+  animation: shineLine 4s linear infinite;
+}
+
+@keyframes shineLine {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+.looksmax-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.looksmax-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.looksmax-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  font-size: 20px;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+.looksmax-card__title {
+  font-size: 19px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.looksmax-card__sub {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+}
+
+.looksmax-card__tier-badge {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.25);
+  text-transform: uppercase;
+}
+
+.looksmax-card__score-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.looksmax-score-box {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: var(--radius-lg);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.looksmax-score-box--potential {
+  border-color: rgba(234, 179, 8, 0.35);
+  background: rgba(234, 179, 8, 0.06);
+}
+
+.looksmax-score-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.looksmax-score-val {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.1;
+}
+
+.looksmax-score-val small {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+  margin-left: 2px;
+}
+
+.looksmax-score-box--potential .looksmax-score-val {
+  color: #facc15;
+}
+
+.looksmax-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #cbd5e1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin: 16px 0 10px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.looksmax-archetypes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 10px;
+}
+
+.looksmax-arch-item {
+  background: rgba(15, 23, 42, 0.5);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+}
+
+.looksmax-arch-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.looksmax-arch-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.looksmax-protocol-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.looksmax-proto-item {
+  background: rgba(15, 23, 42, 0.45);
+  border-left: 3px solid #38bdf8;
+  padding: 10px 14px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+.looksmax-proto-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #e2e8f0;
+  margin-bottom: 2px;
+}
+
+.looksmax-proto-action {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.looksmax-hardmax-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.looksmax-hard-item {
+  font-size: 12.5px;
+  color: #cbd5e1;
+  background: rgba(244, 63, 94, 0.08);
+  border-left: 3px solid #f43f5e;
+  padding: 8px 12px;
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
+  line-height: 1.4;
+}
+

@@ -325,7 +325,7 @@ def validate_pipeline_directly():
     failures += not check("gaussian center == 10",
                           abs(server.gaussian_score(1.95, 1.85, 2.05) - 10.0) < 0.01)
     edge = server.gaussian_score(1.85, 1.85, 2.05)
-    failures += not check("gaussian edge ~= 8.7", abs(edge - 8.7) < 0.05, str(edge))
+    failures += not check(f"gaussian edge ~= {server.EDGE_SCORE}", abs(edge - server.EDGE_SCORE) < 0.05, str(edge))
     failures += not check("gaussian symmetric",
                           abs(server.gaussian_score(1.80, 1.85, 2.05)
                               - server.gaussian_score(2.10, 1.85, 2.05)) < 0.01)
