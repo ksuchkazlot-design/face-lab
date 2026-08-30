@@ -43,7 +43,7 @@ BOT_TOKEN = os.environ.get(
 )
 CHANNEL_LINK = os.environ.get(
     "FACE_LAB_CHANNEL_LINK",
-    "https://t.me/+MLaX9UI1uuEyNTFi",
+    "https://t.me/FACELABS1",
 )
 CHANNEL_USERNAME = os.environ.get("FACE_LAB_CHANNEL", "@FACELABS1")
 
@@ -116,21 +116,27 @@ async def check_channel_member(user_id: int, context: ContextTypes.DEFAULT_TYPE)
     """Check if user is a member of the required channel.
 
     Bot must be admin of the channel for this to work.
-    Returns True if channel check is disabled or fails.
     """
     if not CHANNEL_USERNAME:
         return True
     try:
         member = await context.bot.get_chat_member(CHANNEL_USERNAME, user_id)
-        return member.status in ("member", "administrator", "creator")
+        return member.status in ("member", "administrator", "creator", "restricted")
     except Exception as e:
         logger.warning(f"Channel check failed for {user_id}: {e}")
-        return True
+        return False
 
 
 # ---------------------------------------------------------------------------
 # Keyboard builders
 # ---------------------------------------------------------------------------
+
+def channel_sub_keyboard() -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton("📢 Подписаться на канал", url=CHANNEL_LINK)],
+        [InlineKeyboardButton("🔄 Проверить подписку", callback_data="check_sub")],
+    ])
+
 
 def main_menu_keyboard(credits: int = 0) -> InlineKeyboardMarkup:
     webapp_url = _webapp_url()
@@ -178,11 +184,12 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not is_member:
         await update.message.reply_text(
             f"👋 Добро пожаловать в <b>Face Lab</b>!\n\n"
-            f"Для доступа к боту подпишитесь на наш канал:\n"
-            f"<a href=\"{CHANNEL_LINK}\">{CHANNEL_LINK}</a>\n\n"
-            f"После подписки нажмите /start",
+            f"Для доступа к боту и анализу лица подпишитесь на наш официальный канал:\n"
+            f"👉 <a href=\"{CHANNEL_LINK}\">{CHANNEL_USERNAME}</a>\n\n"
+            f"После подписки нажмите кнопку <b>«Проверить подписку»</b> ниже:",
             parse_mode="HTML",
             disable_web_page_preview=True,
+            reply_markup=channel_sub_keyboard(),
         )
         return
 
@@ -218,6 +225,53 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     data = query.data
     user_id = query.from_user.id
+
+    if data == "check_sub":
+        await query.answer()
+        is_member = await check_channel_member(user_id, context)
+        if not is_member:
+            await query.answer("⚠️ Вы ещё не подписались на канал @FACELABS1! Подпишитесь и нажмите кнопку снова.", show_alert=True)
+            return
+
+        await query.answer("✅ Подписка подтверждена!")
+        user_info = db.get_user(user_id) or {}
+        credits = user_info.get("paid_analyses", 0)
+        first_name = query.from_user.first_name or "друг"
+
+        if credits > 0:
+            text = (
+                f"👋 Привет, <b>{first_name}</b>!\n\n"
+                f"💎 Доступно анализов: <b>{credits}</b>\n\n"
+                f"Нажмите «🔍 Запустить анализ лица» для перехода к сканеру."
+            )
+        else:
+            text = (
+                f"👋 Привет, <b>{first_name}</b>!\n\n"
+                f"🔬 <b>Face Lab</b> — профессиональный биометрический анализ лица по 52 метрикам.\n\n"
+                f"Нажмите «🔍 Запустить анализ лица» чтобы посмотреть приложение.\n"
+                f"Для полного анализа купите пакет анализов — <b>от 50₽ за анализ</b> (по цене батончика 🍫)."
+            )
+
+        await query.edit_message_text(
+            text,
+            parse_mode="HTML",
+            reply_markup=main_menu_keyboard(credits),
+        )
+        return
+
+    # Check channel subscription for all other callbacks
+    is_member = await check_channel_member(user_id, context)
+    if not is_member:
+        await query.answer()
+        await query.edit_message_text(
+            f"👋 Для использования бота необходимо подписаться на наш официальный канал:\n"
+            f"👉 <a href=\"{CHANNEL_LINK}\">{CHANNEL_USERNAME}</a>\n\n"
+            f"После подписки нажмите кнопку <b>«Проверить подписку»</b>:",
+            parse_mode="HTML",
+            disable_web_page_preview=True,
+            reply_markup=channel_sub_keyboard(),
+        )
+        return
 
     await query.answer()
 
