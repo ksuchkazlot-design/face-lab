@@ -409,13 +409,14 @@
       if (!file) {
         return;
       }
-      if (!/^image\//.test(file.type)) {
-        toast("Нужен файл изображения.", true);
+      var isImage = !file.type || /^image\//i.test(file.type) || /\.(jpe?g|png|webp|heic|heif|bmp|gif)$/i.test(file.name || "");
+      if (!isImage) {
+        toast("Нужен файл изображения (JPG, PNG, WebP).", true);
         input.value = "";
         return;
       }
-      if (file.size > 18 * 1024 * 1024) {
-        toast("Файл больше 18 МБ.", true);
+      if (file.size > 25 * 1024 * 1024) {
+        toast("Файл больше 25 МБ.", true);
         input.value = "";
         return;
       }
@@ -431,7 +432,8 @@
         }
         updateCta();
       }).catch(function (error) {
-        toast(error.message, true);
+        console.error("Image load error:", error);
+        toast("Не удалось загрузить фото: " + (error.message || error), true);
       });
     });
 
