@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <meta name="theme-color" content="#0d0d0f" />
+  <meta name="theme-color" content="#fbfbfb" />
   <meta name="description" content="FACE LAB — анализ пропорций лица по 38 метрикам на основе 478 точек MediaPipe." />
   <title>FACE LAB — анализ лица</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
@@ -12,105 +12,51 @@
 <body>
 
   <!-- =====================================================================
-       GATE — zero-analysis paywall screen (matching reference mockup)
+       GATE — paywall screen (shown when no access)
        ===================================================================== -->
-  <main class="gate-wrapper" id="gateScreen" style="display: none;">
-    <div class="gate-glow-bg"></div>
+  <main class="shell" id="gateScreen" style="display: none;">
+    <header class="brand">
+      <div class="brand__logo">
+        <span class="brand__mark">FL</span>
+        <span>Face Lab</span>
+      </div>
+    </header>
 
-    <div class="gate-container">
-      <!-- Top header with logo only (no about/gallery/contacts) -->
-      <header class="gate-header">
-        <div class="gate-brand">
-          <div class="gate-logo-icon">
-            <span></span><span></span><span></span>
-          </div>
-          <span class="gate-brand-name">FACE LAB</span>
-        </div>
-        <div class="gate-badge-tag">38 МЕТРИК · AI</div>
-      </header>
+    <div style="text-align: center; padding: 40px 0 20px;">
+      <div style="font-size: 56px; margin-bottom: 16px;">🔬</div>
+      <h1 class="display">Анализ лица</h1>
+      <p class="lede">38 метрик • 478 точек • 4 категории</p>
+    </div>
 
-      <!-- Main 2-column Hero Content -->
-      <div class="gate-content">
-        <div class="gate-left">
-          <div class="gate-eyebrow">OUR VERSION</div>
-          <h1 class="gate-title">DESIGN</h1>
-          
-          <p class="gate-desc">
-            Профессиональный биометрический анализ лица по 38 анатомическим пропорциям и 478 точкам MediaPipe. Оценка симметрии, углов челюсти, золотого сечения и полового диморфизма.
-          </p>
+    <div class="card" style="margin-top: 8px;">
+      <p class="card__label">Что вы узнаете</p>
+      <ul style="list-style: none; padding: 0; margin-top: 12px;">
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">✨ Симметрия лица</li>
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">📐 Пропорции и гармония</li>
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">🦴 Углы и определённость челюсти</li>
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">👤 Диморфизм и черты пола</li>
+        <li style="padding: 8px 0; border-bottom: 1px solid var(--line);">🎯 Глаза, челюсть, губы, нос</li>
+        <li style="padding: 8px 0;">📊 Сравнение с референсами</li>
+      </ul>
+    </div>
 
-          <!-- Tariff preview pills -->
-          <div class="gate-tariffs">
-            <div class="gate-tariff-pill is-popular">
-              <span class="gate-tariff-name">1 анализ</span>
-              <span class="gate-tariff-price">50 ⭐</span>
-            </div>
-            <div class="gate-tariff-pill">
-              <span class="gate-tariff-name">3 дня</span>
-              <span class="gate-tariff-price">100 ⭐</span>
-            </div>
-            <div class="gate-tariff-pill">
-              <span class="gate-tariff-name">Неделя</span>
-              <span class="gate-tariff-price">300 ⭐</span>
-            </div>
-            <div class="gate-tariff-pill">
-              <span class="gate-tariff-name">Месяц</span>
-              <span class="gate-tariff-price">500 ⭐</span>
-            </div>
-          </div>
-
-          <!-- Features list -->
-          <div class="gate-features-grid">
-            <div class="gate-feature-item">
-              <span class="gate-feature-dot"></span>
-              <span>Симметрия & пропорции</span>
-            </div>
-            <div class="gate-feature-item">
-              <span class="gate-feature-dot"></span>
-              <span>Углы и контур челюсти</span>
-            </div>
-            <div class="gate-feature-item">
-              <span class="gate-feature-dot"></span>
-              <span>Половой диморфизм</span>
-            </div>
-            <div class="gate-feature-item">
-              <span class="gate-feature-dot"></span>
-              <span>Сравнение со стандартами</span>
-            </div>
-          </div>
-
-          <!-- Action Button: Circular arrow + "Купить анализы" (matching See More button) -->
-          <div class="gate-action-area">
-            <button type="button" class="gate-see-more-btn" id="gatePayBtn">
-              <span class="gate-circle-arrow">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </span>
-              <span class="gate-btn-text">Купить анализы</span>
-            </button>
-          </div>
-
-          <!-- Bottom pagination / metrics indicator: 01 === 03 -->
-          <div class="gate-footer-indicator">
-            <span class="gate-page-num">01</span>
-            <div class="gate-progress-line">
-              <div class="gate-progress-active"></div>
-            </div>
-            <span class="gate-page-num">03</span>
-            <span class="gate-stat-sub">478 точек • 4 категории</span>
-          </div>
-        </div>
-
-        <!-- Right Visual with Red Circle & Statue Art -->
-        <div class="gate-right">
-          <div class="gate-visual-wrapper">
-            <img class="gate-statue-img" src="/gate-statue.png" alt="Face Lab Aesthetics" />
-          </div>
-        </div>
+    <div class="card" style="margin-top: 16px;">
+      <p class="card__label">Тарифы</p>
+      <div style="margin-top: 12px;">
+        <div class="kv"><span class="kv__k">1 анализ</span><span class="kv__v">50 ⭐</span></div>
+        <div class="kv"><span class="kv__k">3 дня</span><span class="kv__v">100 ⭐</span></div>
+        <div class="kv"><span class="kv__k">Неделя</span><span class="kv__v">300 ⭐</span></div>
+        <div class="kv"><span class="kv__k">Месяц</span><span class="kv__v">500 ⭐</span></div>
       </div>
     </div>
+
+    <button type="button" class="btn btn--primary btn--full" id="gatePayBtn"
+            style="margin-top: 20px;">
+      💎 Оплатить в Telegram
+    </button>
+    <p class="note" style="text-align: center; margin-top: 12px;">
+      Вернитесь в бот и нажмите «Купить анализ» или «Подписка»
+    </p>
   </main>
 
   <!-- =====================================================================
