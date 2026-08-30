@@ -3127,6 +3127,46 @@
     var appEl = $("app");
     var gateEl = $("gateScreen");
 
+    if (tgApp) {
+      try {
+        if (typeof tgApp.ready === "function") tgApp.ready();
+        if (typeof tgApp.expand === "function") tgApp.expand();
+        if (typeof tgApp.setHeaderColor === "function") tgApp.setHeaderColor("#0d0d0f");
+        if (typeof tgApp.setBackgroundColor === "function") tgApp.setBackgroundColor("#0d0d0f");
+      } catch (e) {}
+    }
+
+    function showGate() {
+      if (appEl) appEl.style.display = "none";
+      if (gateEl) gateEl.style.display = "flex";
+      document.body.classList.add("gate-active");
+      var payBtn = $("gatePayBtn");
+      if (payBtn) {
+        payBtn.addEventListener("click", function () {
+          haptic("selection");
+          if (tgApp && typeof tgApp.close === "function") {
+            tgApp.close();
+          } else {
+            window.location.href = "https://t.me/FACELABS1";
+          }
+        });
+      }
+      qsa(".gate-tariff-pill").forEach(function (pill) {
+        pill.addEventListener("click", function () {
+          qsa(".gate-tariff-pill").forEach(function (p) { p.classList.remove("is-popular"); });
+          pill.classList.add("is-popular");
+          if (payBtn) payBtn.click();
+        });
+      });
+    }
+
+    function showApp() {
+      document.body.classList.remove("gate-active");
+      if (gateEl) gateEl.style.display = "none";
+      if (appEl) appEl.style.display = "";
+      bootApp();
+    }
+
     if (tgApp && tgInitData) {
       var fd = new FormData();
       fd.append("initData", tgInitData);
@@ -3134,41 +3174,16 @@
         .then(function (r) { return r.json(); })
         .then(function (data) {
           if (!data.ok || !data.can_analyse) {
-            if (appEl) appEl.style.display = "none";
-            if (gateEl) gateEl.style.display = "";
-            var payBtn = $("gatePayBtn");
-            if (payBtn) {
-              payBtn.addEventListener("click", function () {
-                haptic("selection");
-                if (tgApp && typeof tgApp.close === "function") {
-                  tgApp.close();
-                } else {
-                  window.location.href = "https://t.me/FaceLabs_bot";
-                }
-              });
-            }
-            qsa(".gate-tariff-pill").forEach(function (pill) {
-              pill.addEventListener("click", function () {
-                qsa(".gate-tariff-pill").forEach(function (p) { p.classList.remove("is-popular"); });
-                pill.classList.add("is-popular");
-                if (payBtn) payBtn.click();
-              });
-            });
+            showGate();
           } else {
-            if (gateEl) gateEl.style.display = "none";
-            if (appEl) appEl.style.display = "";
-            bootApp();
+            showApp();
           }
         })
         .catch(function () {
-          if (gateEl) gateEl.style.display = "none";
-          if (appEl) appEl.style.display = "";
-          bootApp();
+          showGate();
         });
     } else {
-      if (gateEl) gateEl.style.display = "none";
-      if (appEl) appEl.style.display = "";
-      bootApp();
+      showApp();
     }
   }
 
