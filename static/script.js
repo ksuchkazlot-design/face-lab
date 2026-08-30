@@ -754,24 +754,145 @@
       analysisPhoto.src = state.frontData;
     }
 
-    for (var h = 1; h <= 7; h++) {
-      var ht = $("fiqHistThumb" + h);
-      if (ht && state.frontData) {
-        ht.src = state.frontData;
+    createHistoryThumb(state.frontData, function (thumb) {
+      saveToHistory(data, thumb);
+      renderHistory();
+    });
+  }
+
+  function createHistoryThumb(dataUrl, callback) {
+    if (!dataUrl) { callback(""); return; }
+    var img = new Image();
+    img.onload = function () {
+      try {
+        var canvas = document.createElement("canvas");
+        var size = 64;
+        canvas.width = size;
+        canvas.height = size;
+        var ctx = canvas.getContext("2d");
+        var scale = Math.max(size / img.width, size / img.height);
+        var w = img.width * scale;
+        var h = img.height * scale;
+        var x = (size - w) / 2;
+        var y = (size - h) / 2;
+        ctx.drawImage(img, x, y, w, h);
+        callback(canvas.toDataURL("image/jpeg", 0.7));
+      } catch (e) {
+        callback(dataUrl.slice(0, 1000));
       }
+    };
+    img.onerror = function () { callback(""); };
+    img.src = dataUrl;
+  }
+
+  function saveToHistory(data, thumbUrl) {
+    try {
+      var history = JSON.parse(localStorage.getItem("faceLabHistory") || "[]");
+      var scanItem = {
+        id: "scan_" + Date.now(),
+        timestamp: Date.now(),
+        score: (data.overall && data.overall.score) || 0,
+        thumb: thumbUrl || "",
+        cats: (data.categories || []).map(function (c) {
+          return { key: c.key, score: c.score, color: c.color };
+        })
+      };
+      history.unshift(scanItem);
+      if (history.length > 10) history = history.slice(0, 10);
+      localStorage.setItem("faceLabHistory", JSON.stringify(history));
+    } catch (e) {
+      console.warn("History save error:", e);
     }
-    var histScore = $("fiqHistScore1");
-    if (histScore && data.overall) {
-      histScore.textContent = fmt(data.overall.score, 1);
+  }
+
+  function renderHistory() {
+    var list = $("fiqHistoryList");
+    if (!list) return;
+    list.innerHTML = "";
+
+    var history = [];
+    try {
+      history = JSON.parse(localStorage.getItem("faceLabHistory") || "[]");
+    } catch (e) {}
+
+    if (!history.length) {
+      var empty = document.createElement("div");
+      empty.style.cssText = "padding:16px 12px;font-size:12px;color:var(--muted);text-align:center;";
+      empty.textContent = "Нет предыдущих анализов";
+      list.appendChild(empty);
+      return;
     }
 
-    qsa("#fiqHistoryList .fiq-history-item").forEach(function (item) {
+    history.forEach(function (scan, index) {
+      var item = document.createElement("div");
+      item.className = "fiq-history-item" + (index === 0 ? " is-active" : "");
+
+      var img = document.createElement("img");
+      img.className = "fiq-history-thumb";
+      img.alt = "Scan " + (index + 1);
+      if (scan.thumb) {
+        img.src = scan.thumb;
+      } else {
+        img.style.display = "none";
+      }
+
+      var info = document.createElement("div");
+      info.className = "fiq-history-info";
+
+      var row = document.createElement("div");
+      row.className = "fiq-history-row";
+
+      var score = document.createElement("span");
+      score.className = "fiq-history-score";
+      score.textContent = fmt(scan.score, 1);
+
+      var date = document.createElement("span");
+      date.className = "fiq-history-date";
+      var ageMs = Date.now() - scan.timestamp;
+      var ageMins = Math.floor(ageMs / 60000);
+      if (ageMins < 60) {
+        date.textContent = (ageMins <= 1 ? "now" : ageMins + "m");
+      } else {
+        var ageHours = Math.floor(ageMins / 60);
+        if (ageHours < 24) {
+          date.textContent = ageHours + "h";
+        } else {
+          date.textContent = Math.floor(ageHours / 24) + "d";
+        }
+      }
+
+      row.appendChild(score);
+      row.appendChild(date);
+
+      var cats = document.createElement("div");
+      cats.className = "fiq-history-cats";
+      (scan.cats || []).forEach(function (c) {
+        var pill = document.createElement("span");
+        pill.style.color = colorVar(c.color);
+        pill.style.fontWeight = "700";
+        pill.textContent = c.key.charAt(0).toUpperCase();
+        cats.appendChild(pill);
+      });
+
+      info.appendChild(row);
+      info.appendChild(cats);
+
+      var chevron = document.createElement("span");
+      chevron.className = "fiq-history-chevron";
+      chevron.textContent = "›";
+
+      item.appendChild(img);
+      item.appendChild(info);
+      item.appendChild(chevron);
+
       item.addEventListener("click", function () {
         qsa("#fiqHistoryList .fiq-history-item").forEach(function (el) {
           el.classList.remove("is-active");
         });
         item.classList.add("is-active");
       });
+
+      list.appendChild(item);
     });
   }
 
@@ -1118,14 +1239,13 @@
       li.className = "feature-item";
       var tagClass = item.score < 5.0 ? "tag-badge--severe" : "tag-badge--moderate";
       var tagText = item.score < 5.0 ? "SEVERE" : "MODERATE";
-      var diff = item.score - 10.0;
       li.innerHTML =
         '<div class="feature-item__left">' +
           '<span class="tag-badge ' + tagClass + '">' + tagText + '</span>' +
           '<span class="feature-item__name">' + item.label + '</span>' +
         '</div>' +
-        '<div class="feature-item__score feature-item__score--negative">' +
-          '<span>' + (diff >= 0 ? "+" : "") + fmt(diff, 2) + '</span>' +
+        '<div class="feature-item__score">' +
+          '<span style="color:' + colorVar(item.color) + '">' + fmt(item.score, 1) + '</span>' +
           '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"></polyline></svg>' +
         '</div>';
       li.addEventListener("click", function () {
@@ -1273,13 +1393,18 @@
     var badgeEl = $("analysisPanelBadge");
 
     if (isSideMode) {
-      if (titleEl) titleEl.textContent = "Your Side Ratios";
-      var sideKeys = [
-        "gonial_angle", "ramus_ratio", "chin_projection",
-        "mandible_definition", "jaw_mass", "chin_width_ratio",
-        "nasal_index", "nose_length", "philtrum_length",
-        "brow_ridge", "lower_third", "facial_thirds_balance"
-      ];
+      var cat = catByKey(currentAnalysisCat) || catByKey("harmony");
+      var catTitle = cat ? cat.title : "Side";
+      if (titleEl) titleEl.textContent = "Your " + catTitle + " (Side) Ratios";
+
+      // Profile-valid metrics per category - strictly exclude frontal width metrics
+      var sideKeysByCat = {
+        harmony: ["chin_projection", "lower_third"],
+        angularity: ["gonial_angle", "ramus_ratio", "mandible_definition", "chin_projection"],
+        dimorphism: ["gonial_angle", "ramus_ratio", "chin_projection", "lower_third"],
+        features: ["nose_length", "philtrum_length"]
+      };
+      var sideKeys = sideKeysByCat[currentAnalysisCat] || ["chin_projection", "gonial_angle", "ramus_ratio", "mandible_definition", "nose_length", "philtrum_length", "lower_third"];
       var sideMetrics = [];
       sideKeys.forEach(function (k) {
         if (data.metrics && data.metrics[k]) {
@@ -1311,31 +1436,31 @@
   var METRIC_OVERLAY = {
     canthal_tilt: [[33, 133], [263, 362]],
     lower_third: [[2, 152]],
-    eye_separation: [[33, 133], [263, 362], [234, 454]],
+    eye_separation: [[133, 362], [234, 454]],
     mouth_nose_ratio: [[61, 291], [129, 358]],
-    facial_thirds_balance: [[10, 105], [105, 2], [2, 152]],
+    facial_thirds_balance: [[10, 9], [9, 2], [2, 152]],
     vertical_symmetry: [[10, 152], [33, 263], [61, 291]],
     horizontal_symmetry: [[33, 263], [61, 291], [132, 288]],
     golden_ratio: [[10, 152], [234, 454]],
-    midface_ratio: [[33, 263], [2, 152]],
+    midface_ratio: [[33, 263], [61, 291], [168, 0]],
     face_length_ratio: [[10, 152], [234, 454]],
     interocular_ratio: [[133, 362], [33, 133]],
     eye_spacing_symmetry: [[10, 152], [33, 133], [263, 362]],
 
-    gonial_angle: [[127, 172], [172, 152], [356, 397], [397, 152]],
+    gonial_angle: [[127, 132], [132, 152], [356, 288], [288, 152]],
     cheekbone_prominence: [[234, 454], [127, 356]],
-    jaw_cheek_ratio: [[172, 397], [234, 454]],
-    jaw_frontal_angle: [[172, 152], [397, 152]],
-    chin_width_ratio: [[148, 377], [172, 397]],
-    mandible_definition: [[172, 397], [172, 152], [397, 152]],
-    ramus_ratio: [[127, 172], [172, 152]],
-    bigonial_width: [[172, 397], [10, 152]],
-    chin_projection: [[9, 2], [2, 152]],
-    jaw_mass: [[172, 397], [2, 152]],
+    jaw_cheek_ratio: [[132, 288], [234, 454]],
+    jaw_frontal_angle: [[132, 152], [288, 152]],
+    chin_width_ratio: [[148, 377], [132, 288]],
+    mandible_definition: [[132, 288], [132, 152], [288, 152]],
+    ramus_ratio: [[127, 132], [132, 152]],
+    bigonial_width: [[132, 288], [10, 152]],
+    chin_projection: [[2, 152], [132, 152]],
+    jaw_mass: [[132, 288], [2, 152]],
 
     brow_ridge: [[105, 159], [334, 386]],
     lip_thickness: [[0, 13], [14, 17], [61, 291]],
-    dimorphism_index: [[105, 334], [132, 288], [0, 17]],
+    dimorphism_index: [[105, 159], [132, 288], [17, 152]],
     brow_tilt: [[55, 46], [285, 276]],
     eye_aperture: [[159, 145], [386, 374]],
     cheek_fullness: [[205, 425], [234, 454]],
@@ -1583,7 +1708,6 @@
     } else if (Array.isArray(landmarksData)) {
       pts = landmarksData;
     }
-
     if (!pts || !pts.length) return;
 
     var imgW = photo.naturalWidth || photo.width || width;
@@ -1663,13 +1787,14 @@
       if (key === "gonial_angle") {
         // Gonial Angle vertex is at the Gonion (jaw angle corner)
         p1 = pt(127); // upper ramus / condyle
-        vertex = pt(172); // gonion
+        vertex = pt(132); // gonion
         p2 = pt(152); // menton / chin
       } else if (key === "jaw_frontal_angle") {
-        // Jaw Frontal Angle vertex is at the Chin (menton)
-        p1 = pt(172); vertex = pt(152); p2 = pt(397);
+        // Jaw Frontal Angle vertex is at the Chin (menton) between gonions 132 and 288
+        p1 = pt(132); vertex = pt(152); p2 = pt(288);
       } else if (key === "chin_projection") {
-        p1 = pt(9); vertex = pt(2); p2 = pt(152);
+        // Chin Projection vertex is at the Chin (menton 152) between Subnasale (2) and Gonion (132)
+        p1 = pt(2); vertex = pt(152); p2 = pt(132);
       } else {
         p1 = pt(55); vertex = pt(46); p2 = pt(276);
       }
@@ -1685,60 +1810,158 @@
       ctx.lineTo(p2[0], p2[1]);
       ctx.stroke();
 
-      // Angle Arc
+      // Interior Angle Arc
       var a1 = Math.atan2(p1[1] - vertex[1], p1[0] - vertex[0]);
       var a2 = Math.atan2(p2[1] - vertex[1], p2[0] - vertex[0]);
+      var dAngle = a2 - a1;
+      while (dAngle < -Math.PI) dAngle += Math.PI * 2;
+      while (dAngle > Math.PI) dAngle -= Math.PI * 2;
+      var anticlockwise = dAngle < 0;
       var arcR = 32;
 
       ctx.fillStyle = "rgba(27, 180, 159, 0.22)";
       ctx.beginPath();
       ctx.moveTo(vertex[0], vertex[1]);
-      ctx.arc(vertex[0], vertex[1], arcR, a1, a2, false);
+      ctx.arc(vertex[0], vertex[1], arcR, a1, a2, anticlockwise);
       ctx.closePath();
       ctx.fill();
 
       ctx.lineWidth = 2;
       ctx.strokeStyle = cyan;
       ctx.beginPath();
-      ctx.arc(vertex[0], vertex[1], arcR, a1, a2, false);
+      ctx.arc(vertex[0], vertex[1], arcR, a1, a2, anticlockwise);
       ctx.stroke();
 
       [p1, vertex, p2].forEach(function (p, i) { drawDot(p, i === 1); });
 
-      var midA = (a1 + a2) / 2;
+      var midA = a1 + dAngle / 2;
       var textX = vertex[0] + Math.cos(midA) * 52;
       var textY = vertex[1] + Math.sin(midA) * 52;
       drawBadge(textX, textY, metric.display);
 
     } else if (key === "ramus_ratio") {
       var condyle = pt(127);
-      var gonion = pt(172);
-      var menton = pt(152);
+      var gonion = pt(132);
+      var chin = pt(152);
 
-      // Highlighted vertical ramus
+      // Ramus segment
       ctx.lineWidth = 3.2;
       ctx.strokeStyle = cyan;
       ctx.shadowColor = cyanGlow;
-      ctx.shadowBlur = 10;
+      ctx.shadowBlur = 8;
       ctx.beginPath();
       ctx.moveTo(condyle[0], condyle[1]);
       ctx.lineTo(gonion[0], gonion[1]);
       ctx.stroke();
 
-      // Mandibular body line
-      ctx.lineWidth = 2.0;
+      // Mandibular body segment
       ctx.strokeStyle = white;
-      ctx.shadowBlur = 0;
       ctx.beginPath();
       ctx.moveTo(gonion[0], gonion[1]);
-      ctx.lineTo(menton[0], menton[1]);
+      ctx.lineTo(chin[0], chin[1]);
       ctx.stroke();
 
-      [condyle, gonion, menton].forEach(function (p, i) { drawDot(p, i === 1); });
+      [condyle, gonion, chin].forEach(function (p, i) { drawDot(p, i === 1); });
+      drawBadge(gonion[0] - 28, gonion[1], metric.display);
 
-      var badgeX = (condyle[0] + gonion[0]) / 2 + (isProfile ? 28 : -28);
-      var badgeY = (condyle[1] + gonion[1]) / 2;
-      drawBadge(badgeX, badgeY, metric.display);
+    } else if (key === "midface_ratio") {
+      var eyeL = pt(133), eyeR = pt(362);
+      var mouthL = pt(61), mouthR = pt(291);
+      var eyeY = (eyeL[1] + eyeR[1]) / 2;
+      var mouthY = (mouthL[1] + mouthR[1]) / 2;
+      var midX = pt(9)[0];
+
+      // Eye level line
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = white;
+      ctx.beginPath();
+      ctx.moveTo(eyeL[0] - 15, eyeY);
+      ctx.lineTo(eyeR[0] + 15, eyeY);
+      ctx.stroke();
+
+      // Stomion / mouth level line
+      ctx.beginPath();
+      ctx.moveTo(mouthL[0] - 15, mouthY);
+      ctx.lineTo(mouthR[0] + 15, mouthY);
+      ctx.stroke();
+
+      // Vertical midface measurement line
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = cyan;
+      ctx.shadowColor = cyanGlow;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(midX, eyeY);
+      ctx.lineTo(midX, mouthY);
+      ctx.stroke();
+
+      drawDot([midX, eyeY], true);
+      drawDot([midX, mouthY], true);
+      drawBadge(midX + 45, (eyeY + mouthY) / 2, metric.display);
+
+    } else if (key === "lower_third") {
+      var subPt = pt(2);    // Subnasale
+      var chinPt = pt(152); // Menton
+      var midX = pt(9)[0];
+      var wSpan = width * 0.30;
+
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = white;
+      ctx.beginPath();
+      ctx.moveTo(midX - wSpan, subPt[1]);
+      ctx.lineTo(midX + wSpan, subPt[1]);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(midX - wSpan, chinPt[1]);
+      ctx.lineTo(midX + wSpan, chinPt[1]);
+      ctx.stroke();
+
+      // Vertical segment for lower third
+      ctx.lineWidth = 3.5;
+      ctx.strokeStyle = cyan;
+      ctx.shadowColor = cyanGlow;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(midX, subPt[1]);
+      ctx.lineTo(midX, chinPt[1]);
+      ctx.stroke();
+
+      drawDot([midX, subPt[1]], true);
+      drawDot([midX, chinPt[1]], true);
+      drawBadge(midX + wSpan - 15, (subPt[1] + chinPt[1]) / 2, metric.display);
+
+    } else if (key === "facial_thirds_balance") {
+      var topPt = pt(10);  // Trichion
+      var browPt = pt(9);   // Glabella
+      var subPt = pt(2);    // Subnasale
+      var chinPt = pt(152); // Menton
+      var midX = pt(9)[0];
+      var wSpan = width * 0.35;
+
+      ctx.lineWidth = 2.2;
+      ctx.strokeStyle = cyan;
+      ctx.shadowColor = cyanGlow;
+      ctx.shadowBlur = 8;
+      ctx.beginPath();
+      ctx.moveTo(midX, topPt[1]);
+      ctx.lineTo(midX, chinPt[1]);
+      ctx.stroke();
+
+      [topPt, browPt, subPt, chinPt].forEach(function (p) {
+        ctx.lineWidth = 1.8;
+        ctx.strokeStyle = white;
+        ctx.beginPath();
+        ctx.moveTo(midX - wSpan, p[1]);
+        ctx.lineTo(midX + wSpan, p[1]);
+        ctx.stroke();
+        drawDot([midX, p[1]], true);
+      });
+
+      var badgeX = midX + wSpan - 20;
+      drawBadge(badgeX, (topPt[1] + browPt[1]) / 2, "Upper");
+      drawBadge(badgeX, (browPt[1] + subPt[1]) / 2, "Middle");
+      drawBadge(badgeX, (subPt[1] + chinPt[1]) / 2, "Lower");
 
     } else if (key === "canthal_tilt") {
       // Left eye
@@ -1777,54 +2000,6 @@
       var midY = (li[1] + lo[1]) / 2 - 18;
       drawBadge(midX, midY, metric.display);
 
-    } else if (key === "facial_thirds_balance" || key === "lower_third" || key === "midface_ratio") {
-      var topPt = pt(10);  // Trichion (top hairline midline)
-      var browPt = pt(9);   // Glabella (midline between eyebrows! NOT 105!)
-      var subPt = pt(2);    // Subnasale (base of nose midline)
-      var chinPt = pt(152); // Menton (chin tip midline)
-
-      var midX = topPt[0];
-
-      // Central vertical midline
-      ctx.lineWidth = 2.2;
-      ctx.strokeStyle = cyan;
-      ctx.shadowColor = cyanGlow;
-      ctx.shadowBlur = 8;
-      ctx.beginPath();
-      ctx.moveTo(midX, topPt[1]);
-      ctx.lineTo(midX, chinPt[1]);
-      ctx.stroke();
-
-      // Horizontal dividers centered on midX
-      var wSpan = width * 0.35;
-      [topPt, browPt, subPt, chinPt].forEach(function (p) {
-        ctx.lineWidth = 1.8;
-        ctx.strokeStyle = white;
-        ctx.beginPath();
-        ctx.moveTo(midX - wSpan, p[1]);
-        ctx.lineTo(midX + wSpan, p[1]);
-        ctx.stroke();
-        drawDot([midX, p[1]], true);
-      });
-
-      var badgeX = midX + wSpan - 20;
-      if (key === "facial_thirds_balance") {
-        drawBadge(badgeX, (topPt[1] + browPt[1]) / 2, "33.3%");
-        drawBadge(badgeX, (browPt[1] + subPt[1]) / 2, "33.3%");
-        drawBadge(badgeX, (subPt[1] + chinPt[1]) / 2, "33.4%");
-      } else if (key === "lower_third") {
-        // Lower third: highlight the segment between subnasale and menton
-        ctx.lineWidth = 3.5;
-        ctx.strokeStyle = cyan;
-        ctx.beginPath();
-        ctx.moveTo(midX, subPt[1]);
-        ctx.lineTo(midX, chinPt[1]);
-        ctx.stroke();
-        drawBadge(badgeX, (subPt[1] + chinPt[1]) / 2, metric.display);
-      } else {
-        drawBadge(badgeX, (browPt[1] + subPt[1]) / 2, metric.display);
-      }
-
     } else if (key === "vertical_symmetry" || key === "horizontal_symmetry") {
       var topPt = pt(10), chinPt = pt(152);
 
@@ -1855,33 +2030,6 @@
       drawDot(topPt, true);
       drawDot(chinPt, true);
       drawBadge(topPt[0], chinPt[1] - 26, metric.display);
-
-    } else if (key.indexOf("skin") !== -1 || key === "undereye_darkness") {
-      // Highlight skin inspection zones
-      var zones = [
-        { p: pt(205), r: 24, label: "Left Cheek" },
-        { p: pt(425), r: 24, label: "Right Cheek" },
-        { p: pt(151), r: 22, label: "Forehead" },
-        { p: pt(111), r: 16, label: "Under-eye L" },
-        { p: pt(340), r: 16, label: "Under-eye R" }
-      ];
-
-      zones.forEach(function (z) {
-        ctx.lineWidth = 2;
-        ctx.strokeStyle = cyan;
-        ctx.shadowColor = cyanGlow;
-        ctx.shadowBlur = 8;
-        ctx.setLineDash([4, 4]);
-        ctx.beginPath();
-        ctx.arc(z.p[0], z.p[1], z.r, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(27, 180, 159, 0.16)";
-        ctx.fill();
-        ctx.stroke();
-        ctx.setLineDash([]);
-        drawDot(z.p, false);
-      });
-
-      drawBadge(pt(205)[0], pt(205)[1] - 34, metric.display);
 
     } else {
       // General paired metrics
@@ -2991,6 +3139,7 @@
             var payBtn = $("gatePayBtn");
             if (payBtn) {
               payBtn.addEventListener("click", function () {
+                haptic("selection");
                 if (tgApp && typeof tgApp.close === "function") {
                   tgApp.close();
                 } else {
@@ -2998,6 +3147,13 @@
                 }
               });
             }
+            qsa(".gate-tariff-pill").forEach(function (pill) {
+              pill.addEventListener("click", function () {
+                qsa(".gate-tariff-pill").forEach(function (p) { p.classList.remove("is-popular"); });
+                pill.classList.add("is-popular");
+                if (payBtn) payBtn.click();
+              });
+            });
           } else {
             if (gateEl) gateEl.style.display = "none";
             if (appEl) appEl.style.display = "";
@@ -3060,19 +3216,11 @@
         } else if (txt.indexOf("Creator") !== -1) {
           toast("🏆 Creator League: закрытое сообщество FaceIQ с приоритетным доступом к AI!");
         } else if (txt.indexOf("Research") !== -1) {
-          toast("🔬 Research: 52 антропометрических индекса на базе MediaPipe FaceLandmarker.");
+          toast("🔬 Research: 38 антропометрических индексов на базе MediaPipe FaceLandmarker.");
         }
         haptic("light");
       });
     });
-
-    if (tgApp && tgApp.initDataUnsafe && tgApp.initDataUnsafe.user) {
-      var user = tgApp.initDataUnsafe.user;
-      var nameEl = $("fiqUserName");
-      if (nameEl) nameEl.textContent = user.first_name + (user.last_name ? " " + user.last_name : "");
-      var avatar = document.querySelector(".fiq-user-card__avatar");
-      if (avatar) avatar.textContent = user.first_name.charAt(0).toUpperCase();
-    }
   }
 
   function bindCategoryTabs() {
@@ -3240,13 +3388,6 @@
       });
     }
 
-    var upgradeBtn = $("fiqUpgradeBtn");
-    if (upgradeBtn) {
-      upgradeBtn.addEventListener("click", function () {
-        toast("⭐ FaceIQ Pro: безлимитные сканы, неограниченный Gemini 3.6 Flash и персональный план!");
-        haptic("selection");
-      });
-    }
   }
 
   function bootApp() {
@@ -3261,6 +3402,7 @@
     bindCategoryTabs();
     bindShowMoreButtons();
     bindTopbarActions();
+    renderHistory();
     preselect();
     initLoaderParallax();
 

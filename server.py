@@ -70,15 +70,13 @@ COLOR_GREEN = "green"
 COLOR_BEIGE = "beige"
 COLOR_ROSE = "rose"
 
-CATEGORY_ORDER = ["harmony", "angularity", "dimorphism", "features", "skin", "hair"]
+CATEGORY_ORDER = ["harmony", "angularity", "dimorphism", "features"]
 
 CATEGORY_META: Dict[str, Dict[str, Any]] = {
-    "harmony": {"title": "Harmony", "title_ru": "Гармония", "weight": 0.26, "icon": "◈"},
-    "angularity": {"title": "Angularity", "title_ru": "Угловатость", "weight": 0.22, "icon": "◆"},
-    "dimorphism": {"title": "Dimorphism", "title_ru": "Диморфизм", "weight": 0.20, "icon": "◇"},
-    "features": {"title": "Features", "title_ru": "Черты лица", "weight": 0.18, "icon": "○"},
-    "skin": {"title": "Skin", "title_ru": "Кожа", "weight": 0.08, "icon": "◍"},
-    "hair": {"title": "Hair", "title_ru": "Волосы", "weight": 0.06, "icon": "◐"},
+    "harmony": {"title": "Harmony", "title_ru": "Гармония", "weight": 0.30, "icon": "◈"},
+    "angularity": {"title": "Angularity", "title_ru": "Угловатость", "weight": 0.26, "icon": "◆"},
+    "dimorphism": {"title": "Dimorphism", "title_ru": "Диморфизм", "weight": 0.24, "icon": "◇"},
+    "features": {"title": "Features", "title_ru": "Черты лица", "weight": 0.20, "icon": "○"},
 }
 
 GENDERS = ("male", "female")
@@ -264,20 +262,6 @@ GENERIC_BANDS: Dict[str, Tuple[float, float]] = {
     "interocular_ratio": (0.85, 1.25),
     "mouth_width_ratio": (1.42, 1.62),
     "chin_height_ratio": (0.26, 0.34),
-    "skin_tone_ita": (10.0, 55.0),
-    "skin_evenness": (78.0, 100.0),
-    "skin_redness": (4.0, 13.0),
-    "skin_clarity": (72.0, 100.0),
-    "skin_texture": (18.0, 42.0),
-    "undereye_darkness": (0.0, 6.0),
-    "skin_shine": (0.5, 5.0),
-    "skin_contrast": (3.0, 11.0),
-    "hair_coverage": (62.0, 100.0),
-    "hairline_height": (10.0, 20.0),
-    "hair_density": (66.0, 100.0),
-    "hair_shine": (4.0, 16.0),
-    "hair_darkness": (35.0, 85.0),
-    "hair_uniformity": (70.0, 100.0),
 }
 
 # Per-gender overrides applied on top of GENERIC_BANDS.
@@ -291,7 +275,8 @@ GENDER_BAND_OVERRIDES: Dict[str, Dict[str, Tuple[float, float]]] = {
         "brow_tilt": (2.0, 9.0),
         "eye_size": (0.210, 0.248),
         "upper_lip_ratio": (0.60, 0.82),
-        "hairline_height": (11.0, 22.0),
+        "chin_height_ratio": (0.28, 0.36),
+        "lower_third": (33.5, 42.0),
     },
     "female": {
         "brow_ridge": (0.030, 0.058),
@@ -302,7 +287,8 @@ GENDER_BAND_OVERRIDES: Dict[str, Dict[str, Tuple[float, float]]] = {
         "brow_tilt": (6.0, 14.0),
         "eye_size": (0.222, 0.262),
         "upper_lip_ratio": (0.66, 0.88),
-        "hairline_height": (8.0, 17.0),
+        "chin_height_ratio": (0.23, 0.30),
+        "lower_third": (30.5, 38.0),
     },
 }
 
@@ -395,37 +381,6 @@ METRIC_DEFS: Tuple[Dict[str, Any], ...] = (
     {"key": "mouth_width_ratio", "cat": "features", "label": "Mouth Width Ratio", "unit": "",
      "ru": "Ширина рта относительно межзрачкового расстояния."},
 
-    # ---- skin (8) ----
-    {"key": "skin_tone_ita", "cat": "skin", "label": "Skin Tone ITA", "unit": "°",
-     "ru": "Индивидуальный типологический угол — объективная мера светлоты кожи."},
-    {"key": "skin_evenness", "cat": "skin", "label": "Skin Evenness", "unit": "%",
-     "ru": "Ровность тона по зонам лица: чем выше, тем однороднее цвет."},
-    {"key": "skin_redness", "cat": "skin", "label": "Skin Redness", "unit": "",
-     "ru": "Уровень покраснения по красно-зелёной оси цветового пространства Lab."},
-    {"key": "skin_clarity", "cat": "skin", "label": "Skin Clarity", "unit": "%",
-     "ru": "Чистота кожи: оценка по количеству локальных неоднородностей."},
-    {"key": "skin_texture", "cat": "skin", "label": "Skin Texture", "unit": "",
-     "ru": "Микрорельеф поверхности кожи по высокочастотной составляющей изображения."},
-    {"key": "undereye_darkness", "cat": "skin", "label": "Undereye Darkness", "unit": "",
-     "ru": "Затемнение под глазами относительно тона щеки."},
-    {"key": "skin_shine", "cat": "skin", "label": "Skin Shine", "unit": "%",
-     "ru": "Площадь пересветов на коже. Указывает на жирность или засветку кадра."},
-    {"key": "skin_contrast", "cat": "skin", "label": "Skin Contrast", "unit": "",
-     "ru": "Разброс светлоты внутри области лица."},
-
-    # ---- hair (6) ----
-    {"key": "hair_coverage", "cat": "hair", "label": "Hair Coverage", "unit": "%",
-     "ru": "Заполненность зоны волос над линией роста в кадре."},
-    {"key": "hairline_height", "cat": "hair", "label": "Hairline Height", "unit": "%",
-     "ru": "Высота линии роста волос относительно высоты лица."},
-    {"key": "hair_density", "cat": "hair", "label": "Hair Density", "unit": "%",
-     "ru": "Плотность волос по насыщенности тёмных пикселей в зоне волос."},
-    {"key": "hair_shine", "cat": "hair", "label": "Hair Shine", "unit": "%",
-     "ru": "Блеск волос по доле светлых блик-пикселей."},
-    {"key": "hair_darkness", "cat": "hair", "label": "Hair Darkness", "unit": "%",
-     "ru": "Глубина тона волос: 0 — очень светлые, 100 — очень тёмные."},
-    {"key": "hair_uniformity", "cat": "hair", "label": "Hair Uniformity", "unit": "%",
-     "ru": "Однородность цвета волос по зоне."},
 )
 
 METRIC_BY_KEY: Dict[str, Dict[str, Any]] = {m["key"]: m for m in METRIC_DEFS}
@@ -559,20 +514,6 @@ def advice_text_ru(key: str, hint: str, score: float) -> str:
         "upper_lip_ratio": "Соотношение губ корректируется филерами или макияжем.",
         "nose_height_ratio": "Высота носа — анатомическая. Ринопластика меняет пропорцию.",
         "mouth_width_ratio": "Ширина рта — анатомическая. Контуринг губ визуально корректирует.",
-        "skin_tone_ita": "Тон кожи зависит от генетики и загара. SPF и уход выравнивают.",
-        "skin_evenness": "Ровность тона улучшается SPF, ретинолом, витамином С и пилингами.",
-        "skin_redness": "Покраснение снижается успокаивающим уходом, ниацинамидом и азелаиновой кислотой.",
-        "skin_clarity": "Чистота кожи улучшается регулярным очищением, салициловой кислотой и ретиноидами.",
-        "skin_texture": "Микрорельф выравнивается ретинолом, пилингами и увлажнением.",
-        "undereye_darkness": "Тёмные круги уменьшаются сном, витамином К, кофеином и консилером.",
-        "skin_shine": "Жирность контролируется ниацинамидом, матирующими средствами и умыванием.",
-        "skin_contrast": "Контраст кожи выравнивается SPF, тониками и увлажнением.",
-        "hair_coverage": "Покрытие волос зависит от густоты и укладки. Миноксидил и финастерид помогают при поредении.",
-        "hairline_height": "Линия роста волос — генетика. Миноксидил и трансплантация корректируют.",
-        "hair_density": "Плотность волос зависит от питания и ухода. Миноксидил и массаж кожи головы стимулируют.",
-        "hair_shine": "Блеск волос улучшается увлажнением, масками и холодным ополаскиванием.",
-        "hair_darkness": "Тон волос зависит от пигмента. Окрашивание и тонирование меняют глубину.",
-        "hair_uniformity": "Однородность цвета достигается тонированием и уходом за длиной.",
     }
     text = base.get(key)
     if not text:
@@ -673,8 +614,8 @@ def clamp(value: float, lo: float, hi: float) -> float:
 # ---------------------------------------------------------------------------
 
 # Face oval ordered from chin (152) going left-up then right-up
-_JAWLINE_LEFT = [152, 148, 176, 149, 150, 136, 172, 58, 132, 93]
-_JAWLINE_RIGHT = [152, 377, 400, 378, 379, 365, 397, 288, 361, 323]
+_JAWLINE_LEFT = [152, 148, 176, 149, 150, 136, 172, 132]
+_JAWLINE_RIGHT = [152, 377, 400, 378, 379, 365, 397, 288]
 
 
 def jaw_contour_analysis(pts: List[Tuple[float, float]]) -> Dict[str, Any]:
@@ -899,7 +840,7 @@ def frontal_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     eye_r_center = midpoint(pts[LM_EYE_R_OUTER], pts[LM_EYE_R_INNER])
     pupil_distance = dist(eye_l_center, eye_r_center)
 
-    brow_line_y = (pts[LM_BROW_L_TOP][1] + pts[LM_BROW_R_TOP][1]) / 2.0
+    brow_line_y = pts[LM_GLABELLA][1]
     subnasale_y = pts[LM_SUBNASALE][1]
     trichion_y = pts[LM_TRICHION][1]
     menton_y = pts[LM_MENTON][1]
@@ -966,7 +907,7 @@ def frontal_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     out["cheekbone_prominence"] = safe_div(face_width, temple_width, 1.2)
     out["jaw_cheek_ratio"] = safe_div(jaw["jaw_width"], face_width, 0.8)
 
-    out["jaw_frontal_angle"] = angle_deg(jaw["gonion_left"], pts[LM_MENTON], jaw["gonion_right"])
+    out["jaw_frontal_angle"] = angle_deg(pts[LM_GONION_L], pts[LM_MENTON], pts[LM_GONION_R])
 
     out["chin_width_ratio"] = safe_div(jaw["chin_width"], max(jaw["jaw_width"], 1e-6), 0.28)
 
@@ -977,9 +918,9 @@ def frontal_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     out["bigonial_width"] = safe_div(jaw["jaw_width"], face_height, 0.6)
     out["jaw_mass"] = safe_div(lower * jaw["jaw_width"], face_height * face_width, 0.35) * 1.55
 
-    # chin projection is refined later when a profile photo exists
-    chin_angle = angle_deg(pts[LM_SUBNASALE], pts[LM_LOWER_LIP_OUTER], pts[LM_MENTON])
-    out["chin_projection"] = clamp(chin_angle, 120.0, 200.0)
+    # chin projection: vertex at the chin apex (Menton)
+    chin_angle = angle_deg(pts[LM_SUBNASALE], pts[LM_MENTON], pts[LM_GONION_L])
+    out["chin_projection"] = clamp(chin_angle, 120.0, 185.0)
 
     # --- dimorphism ---
     brow_gap_l = abs(pts[LM_BROW_L_TOP][1] - pts[LM_EYE_L_TOP][1])
@@ -1071,14 +1012,14 @@ def horizontal_symmetry_pct(pts: List[Tuple[float, float]], axis_top: Sequence[f
 def profile_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     """Refine projection-sensitive measurements using the profile photo."""
     out: Dict[str, float] = {}
-    # Facial convexity angle glabella-subnasale-menton. A straighter profile means
-    # a stronger chin, so projection is read as its complement around 333 degrees.
     facial_convexity = angle_deg(pts[LM_GLABELLA], pts[LM_SUBNASALE], pts[LM_MENTON])
-    if facial_convexity <= 1.0:
-        out["chin_projection"] = 168.0
-    else:
-        out["chin_projection"] = clamp(333.0 - facial_convexity, 120.0, 200.0)
     out["facial_convexity"] = facial_convexity
+    # Chin projection: vertex at Menton (chin apex 152) between Subnasale and gonion
+    g_pt = pts[LM_GONION_L] if abs(pts[LM_GONION_L][0] - pts[LM_MENTON][0]) > abs(pts[LM_GONION_R][0] - pts[LM_MENTON][0]) else pts[LM_GONION_R]
+    chin_angle = angle_deg(pts[LM_SUBNASALE], pts[LM_MENTON], g_pt)
+    if chin_angle <= 1.0 or chin_angle > 185.0:
+        chin_angle = 168.0
+    out["chin_projection"] = clamp(chin_angle, 120.0, 185.0)
     jaw_p = jaw_contour_analysis(pts)
     gonial_l = angle_deg(pts[LM_TEMPLE_L], jaw_p["gonion_left"], pts[LM_MENTON])
     gonial_r = angle_deg(pts[LM_TEMPLE_R], jaw_p["gonion_right"], pts[LM_MENTON])
@@ -1251,7 +1192,7 @@ def dimorphism_index(raw: Dict[str, float], gender: str,
                      bands: Dict[str, Tuple[float, float]]) -> float:
     """Composite masculinity/femininity alignment, expressed 0..100."""
     contributors = ("brow_ridge", "lip_thickness", "jaw_mass", "eye_aperture",
-                    "cheek_fullness", "brow_tilt", "gonial_angle")
+                    "cheek_fullness", "brow_tilt", "gonial_angle", "chin_height_ratio", "lower_third")
     scores: List[float] = []
     for key in contributors:
         if key not in raw or key not in bands:
@@ -1465,8 +1406,6 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
 
     front_pts, blendshapes = detect_landmarks(front_image)
     raw = frontal_metrics(front_pts)
-    raw.update(skin_metrics(front_image, front_pts))
-    raw.update(hair_metrics(front_image, front_pts))
 
     sources: Dict[str, str] = {key: "front" for key in raw}
     profile_used = False
@@ -1511,6 +1450,7 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
     ranked = sorted(all_metrics, key=lambda m: m["score"], reverse=True)
 
     front_h, front_w = front_image.shape[:2]
+    profile_h, profile_w = profile_image.shape[:2] if profile_image is not None else (1, 1)
     looksmaxxing = build_looksmaxxing_summary(raw, overall, gender)
 
     return {
@@ -1555,6 +1495,8 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
         "landmarks": {
             "front": [[round(p[0] / max(front_w, 1), 5), round(p[1] / max(front_h, 1), 5)]
                       for p in front_pts],
+            "profile": [[round(p[0] / max(profile_w, 1), 5), round(p[1] / max(profile_h, 1), 5)]
+                        for p in profile_landmarks] if profile_landmarks else [],
         },
         "blendshape_sample": dict(sorted(blendshapes.items(),
                                          key=lambda kv: kv[1], reverse=True)[:8]),
@@ -1592,12 +1534,11 @@ app.add_middleware(
 )
 
 ALLOWED_ANALYSIS_PAGES = {
-    "harmony.html", "angularity.html", "dimorphism.html",
-    "features.html", "skin.html", "hair.html",
+    "harmony.html", "angularity.html", "dimorphism.html", "features.html",
 }
 ALLOWED_DETAIL_PAGES = {
     "harmony-detail.html", "angularity-detail.html", "dimorphism-detail.html",
-    "features-detail.html", "skin-detail.html", "hair-detail.html",
+    "features-detail.html",
 }
 
 
@@ -1640,6 +1581,16 @@ def analysis_page_js() -> FileResponse:
 def detail_page_js() -> FileResponse:
     return FileResponse(os.path.join(STATIC_DIR, "detail-page.js"),
                         media_type="application/javascript")
+
+
+@app.get("/gate-statue.png")
+def gate_statue_png() -> FileResponse:
+    return FileResponse(os.path.join(STATIC_DIR, "gate-statue.png"), media_type="image/png")
+
+
+@app.get("/gate-hero.png")
+def gate_hero_png() -> FileResponse:
+    return FileResponse(os.path.join(STATIC_DIR, "gate-hero.png"), media_type="image/png")
 
 
 @app.get("/analysis/{page}", response_class=HTMLResponse)

@@ -12,18 +12,14 @@
     harmony: "Harmony",
     angularity: "Angularity",
     dimorphism: "Dimorphism",
-    features: "Features",
-    skin: "Skin",
-    hair: "Hair"
+    features: "Features"
   };
 
   var CAT_NOTE = {
     harmony: "Баланс зон лица, симметрия и соотношения ширин.",
     angularity: "Резкость линии челюсти и выступание скул.",
     dimorphism: "Соответствие черт выбранному полу.",
-    features: "Размеры отдельных элементов лица.",
-    skin: "Цвет, ровность и текстура кожи по пикселям кадра.",
-    hair: "Плотность, тон и однородность волос."
+    features: "Размеры отдельных элементов лица."
   };
 
   function detailHref(metric) {

@@ -22,15 +22,13 @@
     middle_eastern: "Ближневосточный"
   };
 
-  var CAT_ORDER = ["harmony", "angularity", "dimorphism", "features", "skin", "hair"];
+  var CAT_ORDER = ["harmony", "angularity", "dimorphism", "features"];
 
   var CAT_RU = {
     harmony: "Гармония",
     angularity: "Угловатость",
     dimorphism: "Диморфизм",
-    features: "Черты лица",
-    skin: "Кожа",
-    hair: "Волосы"
+    features: "Черты лица"
   };
 
   function safeGet(key) {
@@ -250,41 +248,38 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
-    ctx.strokeStyle = "rgba(43, 184, 168, 0.15)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([4, 4]);
-    ctx.beginPath();
-    var first = true;
-    FACE_OVAL.forEach(function (idx) {
-      var pt = points[idx];
-      if (!pt) return;
-      if (first) { ctx.moveTo(pt[0] * width, pt[1] * height); first = false; }
-      else ctx.lineTo(pt[0] * width, pt[1] * height);
-    });
-    ctx.closePath();
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    var ax = 0, ay = 0, bx = 0, by = 0;
-    var mTop = points[10], mBot = points[152];
-    if (mTop && mBot) {
-      ctx.strokeStyle = "rgba(43, 184, 168, 0.12)";
-      ctx.lineWidth = 1;
-      ctx.setLineDash([6, 6]);
-      ctx.beginPath();
-      ctx.moveTo(mTop[0] * width, mTop[1] * height);
-      ctx.lineTo(mBot[0] * width, mBot[1] * height);
-      ctx.stroke();
-      ctx.setLineDash([]);
-      ax = mTop[0]; ay = mTop[1];
-      bx = mBot[0]; by = mBot[1];
-    }
-
     if (mode === "off") {
       return;
     }
 
     if (mode === "mesh") {
+      ctx.strokeStyle = "rgba(43, 184, 168, 0.15)";
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      var first = true;
+      FACE_OVAL.forEach(function (idx) {
+        var pt = points[idx];
+        if (!pt) return;
+        if (first) { ctx.moveTo(pt[0] * width, pt[1] * height); first = false; }
+        else ctx.lineTo(pt[0] * width, pt[1] * height);
+      });
+      ctx.closePath();
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      var mTop = points[10], mBot = points[152];
+      if (mTop && mBot) {
+        ctx.strokeStyle = "rgba(43, 184, 168, 0.12)";
+        ctx.lineWidth = 1;
+        ctx.setLineDash([6, 6]);
+        ctx.beginPath();
+        ctx.moveTo(mTop[0] * width, mTop[1] * height);
+        ctx.lineTo(mBot[0] * width, mBot[1] * height);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
       ctx.fillStyle = "rgba(43, 184, 168, 0.7)";
       points.forEach(function (point) {
         ctx.beginPath();
@@ -408,8 +403,9 @@
         stagePhoto.classList.add("is-visible");
       }, 80);
       stagePhoto.onload = function () {
-        var lm = mode === "profile" ? (report && report.landmarks && report.landmarks.profile)
-                                    : (report && report.landmarks && report.landmarks.front);
+        var lm = (mode === "profile" || mode === "side")
+          ? (report && report.landmarks && report.landmarks.profile)
+          : (report && report.landmarks && report.landmarks.front);
         if (lm && lm.length) {
           drawLandmarks(canvas, stagePhoto, lm, overlayMode);
         } else if (canvas) {

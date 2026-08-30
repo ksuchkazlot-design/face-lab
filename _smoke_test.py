@@ -197,7 +197,7 @@ def main():
             failures += not check("GET " + path,
                                   response.status_code == 200 and marker in response.text)
 
-        for name in ("harmony", "angularity", "dimorphism", "features", "skin", "hair"):
+        for name in ("harmony", "angularity", "dimorphism", "features"):
             response = client.get("/analysis/%s.html" % name)
             failures += not check("GET /analysis/%s.html" % name,
                                   response.status_code == 200
@@ -218,7 +218,7 @@ def main():
         payload = response.json()
         failures += not check("GET /api/health",
                               response.status_code == 200
-                              and payload["metric_count"] == 52
+                              and payload["metric_count"] == 38
                               and payload["standard_count"] == 8,
                               "metrics=%s standards=%s" % (payload.get("metric_count"),
                                                            payload.get("standard_count")))
@@ -228,7 +228,7 @@ def main():
         failures += not check("GET /api/standards",
                               response.status_code == 200
                               and len(payload["standards"]) == 8
-                              and len(payload["metrics"]) == 52,
+                              and len(payload["metrics"]) == 38,
                               "combos=%d" % len(payload["standards"]))
 
         # --- validation -----------------------------------------------------
@@ -272,10 +272,10 @@ def main():
             failures += not check("POST /analyze-complete", data["ok"] is True)
             failures += not check("478 landmarks", data["landmark_count"] == 478,
                                   str(data["landmark_count"]))
-            failures += not check("52 metrics",
-                                  len(data["metrics"]) == 52,
+            failures += not check("38 metrics",
+                                  len(data["metrics"]) == 38,
                                   str(len(data["metrics"])))
-            failures += not check("6 categories", len(data["categories"]) == 6)
+            failures += not check("4 categories", len(data["categories"]) == 4)
             failures += not check("overall in range",
                                   0.0 <= data["overall"]["score"] <= 10.0,
                                   str(data["overall"]["score"]))
@@ -347,13 +347,13 @@ def validate_pipeline_directly():
         for ethnicity in server.ETHNICITIES:
             bands = server.build_bands(gender, ethnicity)
             missing = [m["key"] for m in server.METRIC_DEFS if m["key"] not in bands]
-            failures += not check("bands cover 52 metrics (%s/%s)" % (gender, ethnicity),
+            failures += not check("bands cover 38 metrics (%s/%s)" % (gender, ethnicity),
                                   not missing, ",".join(missing))
             bad = [k for k, v in bands.items() if v[0] > v[1]]
             failures += not check("bands ordered (%s/%s)" % (gender, ethnicity),
                                   not bad, ",".join(bad))
 
-    failures += not check("52 metric defs", len(server.METRIC_DEFS) == 52,
+    failures += not check("38 metric defs", len(server.METRIC_DEFS) == 38,
                           str(len(server.METRIC_DEFS)))
     failures += not check("metric keys unique",
                           len(server.METRIC_BY_KEY) == len(server.METRIC_DEFS))

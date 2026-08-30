@@ -200,10 +200,18 @@ def add_payment(user_id: int, amount: int, currency: str, product: str,
 # --- Analyses ---
 
 def add_analysis(user_id: int, overall: float, gender: str, ethnicity: str):
+    now = time.time()
     with get_db() as db:
+        # Prevent duplicate entries within 5 seconds
+        dup = db.execute(
+            "SELECT id FROM analyses WHERE user_id = ? AND abs(created_at - ?) < 5.0 LIMIT 1",
+            (user_id, now),
+        ).fetchone()
+        if dup:
+            return
         db.execute(
             "INSERT INTO analyses (user_id, created_at, overall, gender, ethnicity) VALUES (?, ?, ?, ?, ?)",
-            (user_id, time.time(), overall, gender, ethnicity),
+            (user_id, now, overall, gender, ethnicity),
         )
 
 
