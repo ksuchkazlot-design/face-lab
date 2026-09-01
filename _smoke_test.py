@@ -165,6 +165,8 @@ def main():
     env = dict(os.environ)
     env["FACE_LAB_PORT"] = str(port)
     env["FACE_LAB_HOST"] = "127.0.0.1"
+    env["FACE_LAB_PAYWALL"] = "0"
+    env["FACE_LAB_BOT"] = "0"
 
     print("booting server on port %d ..." % port)
     process = subprocess.Popen(

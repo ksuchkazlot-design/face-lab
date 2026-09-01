@@ -37,10 +37,7 @@ logger = logging.getLogger("face-lab-bot")
 # Config
 # ---------------------------------------------------------------------------
 
-BOT_TOKEN = os.environ.get(
-    "FACE_LAB_BOT_TOKEN",
-    os.environ.get("TELEGRAM_BOT_TOKEN", "8689574065:AAFyUzrq2nlnk4KPxIdiulEbQUYVCzoAxHI")
-)
+BOT_TOKEN = os.environ.get("FACE_LAB_BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
 CHANNEL_LINK = os.environ.get(
     "FACE_LAB_CHANNEL_LINK",
     "https://t.me/FACELABS1",
@@ -205,7 +202,7 @@ async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         text = (
             f"👋 Привет, <b>{user.first_name}</b>!\n\n"
-            f"🔬 <b>Face Lab</b> — профессиональный биометрический анализ лица по 52 метрикам.\n\n"
+            f"🔬 <b>Face Lab</b> — профессиональный биометрический анализ лица по 38 метрикам.\n\n"
             f"Нажмите «🔍 Запустить анализ лица» чтобы посмотреть приложение.\n"
             f"Для полного анализа купите пакет анализов — <b>от 50₽ за анализ</b> (по цене батончика 🍫)."
         )
@@ -227,7 +224,6 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = query.from_user.id
 
     if data == "check_sub":
-        await query.answer()
         is_member = await check_channel_member(user_id, context)
         if not is_member:
             await query.answer("⚠️ Вы ещё не подписались на канал @FACELABS1! Подпишитесь и нажмите кнопку снова.", show_alert=True)
@@ -247,7 +243,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         else:
             text = (
                 f"👋 Привет, <b>{first_name}</b>!\n\n"
-                f"🔬 <b>Face Lab</b> — профессиональный биометрический анализ лица по 52 метрикам.\n\n"
+                f"🔬 <b>Face Lab</b> — профессиональный биометрический анализ лица по 38 метрикам.\n\n"
                 f"Нажмите «🔍 Запустить анализ лица» чтобы посмотреть приложение.\n"
                 f"Для полного анализа купите пакет анализов — <b>от 50₽ за анализ</b> (по цене батончика 🍫)."
             )
@@ -380,6 +376,9 @@ async def cmd_grant(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     if not user:
         return
+    if not db.is_admin(user.id):
+        await update.message.reply_text("⛔ Команда доступна только администратору.")
+        return
     db.add_paid_credits(user.id, 10)
     user_info = db.get_user(user.id) or {}
     credits = user_info.get("paid_analyses", 0)
@@ -391,6 +390,11 @@ async def cmd_grant(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 def create_bot() -> Application:
+    if not BOT_TOKEN:
+        raise RuntimeError(
+            "FACE_LAB_BOT_TOKEN не задан. Выпустите токен у @BotFather и передайте его "
+            "через переменную окружения; старый токен из истории git отозван."
+        )
     app = Application.builder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", cmd_start))

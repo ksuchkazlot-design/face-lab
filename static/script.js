@@ -309,7 +309,7 @@
     }
     var tag = $("brandTag");
     if (tag) {
-      tag.textContent = step === 4 ? "Отчёт готов" : "52 метрики";
+      tag.textContent = step === 4 ? "Отчёт готов" : "38 метрик";
     }
     updateCta();
     window.scrollTo({ top: 0, behavior: step === 1 ? "auto" : "smooth" });
@@ -2242,7 +2242,7 @@
 
     var allKeys = getAllMetricKeys(state.analysis);
     var idx = allKeys.indexOf(metricKey);
-    var posText = (idx >= 0 ? (idx + 1) : 1) + " / " + (allKeys.length || 52);
+    var posText = (idx >= 0 ? (idx + 1) : 1) + " / " + (allKeys.length || 38);
 
     $("modalRatioBadge").textContent = posText;
     $("modalRatioTitle").textContent = metric.label;
@@ -3385,7 +3385,7 @@
     var helpBtn = $("topbarHelpBtn");
     if (helpBtn) {
       helpBtn.addEventListener("click", function () {
-        toast("FaceIQ: 52 биометрических показателя MediaPipe. 8–10 Отлично, 6–8 Хорошо, 4–6 Средне, 0–4 Зона роста.");
+        toast("FaceIQ: 38 биометрических показателей MediaPipe. 8–10 Отлично, 6–8 Хорошо, 4–6 Средне, 0–4 Зона роста.");
         haptic("light");
       });
     }

@@ -65,6 +65,9 @@ MAX_UPLOAD_BYTES = 18 * 1024 * 1024
 MAX_WORK_SIZE = 1400          # longest side used for landmark detection
 EDGE_SCORE = 6.2              # strict Looksmaxxing score at the edge of an ideal band (was 8.7)
 
+# Set FACE_LAB_PAYWALL=0 to allow unauthenticated analysis (local dev / smoke tests only).
+PAYWALL_REQUIRED = os.environ.get("FACE_LAB_PAYWALL", "1") != "0"
+
 COLOR_TEAL = "teal"
 COLOR_GREEN = "green"
 COLOR_BEIGE = "beige"
@@ -293,7 +296,7 @@ GENDER_BAND_OVERRIDES: Dict[str, Dict[str, Tuple[float, float]]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Metric registry: 52 metrics across 6 categories
+# Metric registry: 38 metrics across 4 categories
 # ---------------------------------------------------------------------------
 
 METRIC_DEFS: Tuple[Dict[str, Any], ...] = (
@@ -1686,11 +1689,18 @@ async def analyze_complete(
         user_data = json.loads(params.get("user", "{}"))
         user_id = int(user_data.get("id", 0))
 
-        if user_id and not db.can_analyse(user_id):
+        if not user_id:
+            raise HTTPException(status_code=403, detail="Не удалось определить пользователя Telegram.")
+        if not db.can_analyse(user_id):
             raise HTTPException(
                 status_code=402,
                 detail="Для анализа нужно купить пакет анализов в боте @FaceLabs_bot. Стоимость — от 50₽ (по цене батончика 🍫).",
             )
+    elif PAYWALL_REQUIRED:
+        raise HTTPException(
+            status_code=403,
+            detail="Анализ доступен только через Telegram-бот @FaceLabs_bot.",
+        )
 
     front_bytes = await front.read()
     front_image = decode_upload(front_bytes)
@@ -1754,27 +1764,6 @@ async def telegram_verify(initData: str = Form(...)) -> JSONResponse:
         "is_subscribed": db.is_subscribed(user_id),
         "subscription": db.get_subscription_info(user_id),
     })
-
-
-@app.post("/api/telegram/analysis-used")
-async def telegram_analysis_used(user_id: int = Form(...)) -> JSONResponse:
-    """Mark that a free analysis was consumed."""
-    import database as db
-    db.add_analysis(user_id, 0.0, "", "")
-    return JSONResponse({"ok": True})
-
-
-@app.post("/api/telegram/analysis-result")
-async def telegram_analysis_result(
-    user_id: int = Form(...),
-    overall: float = Form(...),
-    gender: str = Form(""),
-    ethnicity: str = Form(""),
-) -> JSONResponse:
-    """Save analysis result after completion."""
-    import database as db
-    db.add_analysis(user_id, overall, gender, ethnicity)
-    return JSONResponse({"ok": True})
 
 
 # ---------------------------------------------------------------------------
