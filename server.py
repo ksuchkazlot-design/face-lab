@@ -90,7 +90,6 @@ ETHNICITIES = ("caucasian", "asian", "african", "middle_eastern")
 # ---------------------------------------------------------------------------
 
 LM_TRICHION = 10          # top of forehead
-LM_FOREHEAD_MID = 151
 LM_GLABELLA = 9           # between brows
 LM_NASION = 168           # root of nose
 LM_NOSE_TIP = 1
@@ -137,8 +136,6 @@ LM_CHIN_L = 150          # chin-level left jawline
 LM_CHIN_R = 378          # chin-level right jawline
 LM_CHEEK_L = 205
 LM_CHEEK_R = 425
-LM_UNDEREYE_L = 230
-LM_UNDEREYE_R = 450
 
 MIDLINE_POINTS = (10, 151, 9, 168, 1, 2, 0, 17, 152)
 
@@ -153,12 +150,6 @@ SYMMETRY_PAIRS: Tuple[Tuple[int, int], ...] = (
     (46, 276),
     (159, 386),
     (145, 374),
-)
-
-FACE_OVAL_IDX: Tuple[int, ...] = (
-    10, 338, 297, 332, 284, 251, 389, 356, 454, 323, 361, 288, 397, 365, 379,
-    378, 400, 377, 152, 148, 176, 149, 150, 136, 172, 58, 132, 93, 234, 127,
-    162, 21, 54, 103, 67, 109,
 )
 
 
@@ -264,7 +255,7 @@ GENERIC_BANDS: Dict[str, Tuple[float, float]] = {
     "nose_height_ratio": (0.30, 0.38),
     "interocular_ratio": (0.85, 1.25),
     "mouth_width_ratio": (1.42, 1.62),
-    "chin_height_ratio": (0.26, 0.34),
+    "chin_height_ratio": (0.48, 0.60),
 }
 
 # Per-gender overrides applied on top of GENERIC_BANDS.
@@ -278,7 +269,7 @@ GENDER_BAND_OVERRIDES: Dict[str, Dict[str, Tuple[float, float]]] = {
         "brow_tilt": (2.0, 9.0),
         "eye_size": (0.210, 0.248),
         "upper_lip_ratio": (0.60, 0.82),
-        "chin_height_ratio": (0.28, 0.36),
+        "chin_height_ratio": (0.50, 0.64),
         "lower_third": (33.5, 42.0),
     },
     "female": {
@@ -290,7 +281,7 @@ GENDER_BAND_OVERRIDES: Dict[str, Dict[str, Tuple[float, float]]] = {
         "brow_tilt": (6.0, 14.0),
         "eye_size": (0.222, 0.262),
         "upper_lip_ratio": (0.66, 0.88),
-        "chin_height_ratio": (0.23, 0.30),
+        "chin_height_ratio": (0.44, 0.56),
         "lower_third": (30.5, 38.0),
     },
 }
@@ -559,13 +550,14 @@ def build_metric_result(key: str, value: float, bands: Dict[str, Tuple[float, fl
 
 
 def format_value(value: float, unit: str) -> str:
+    disp_val = max(0.0, value)
     if unit == "%":
-        return f"{value:.1f}%"
+        return f"{disp_val:.1f}%"
     if unit == "°":
-        return f"{value:.1f}°"
-    if abs(value) < 1.0:
-        return f"{value:.3f}"
-    return f"{value:.2f}"
+        return f"{disp_val:.1f}°"
+    if abs(disp_val) < 1.0:
+        return f"{disp_val:.3f}"
+    return f"{disp_val:.2f}"
 
 
 # ---------------------------------------------------------------------------
@@ -910,7 +902,7 @@ def frontal_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     out["cheekbone_prominence"] = safe_div(face_width, temple_width, 1.2)
     out["jaw_cheek_ratio"] = safe_div(jaw["jaw_width"], face_width, 0.8)
 
-    out["jaw_frontal_angle"] = angle_deg(pts[LM_GONION_L], pts[LM_MENTON], pts[LM_GONION_R])
+    out["jaw_frontal_angle"] = angle_deg(jaw["gonion_left"], pts[LM_MENTON], jaw["gonion_right"])
 
     out["chin_width_ratio"] = safe_div(jaw["chin_width"], max(jaw["jaw_width"], 1e-6), 0.28)
 
@@ -921,9 +913,10 @@ def frontal_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     out["bigonial_width"] = safe_div(jaw["jaw_width"], face_height, 0.6)
     out["jaw_mass"] = safe_div(lower * jaw["jaw_width"], face_height * face_width, 0.35) * 1.55
 
-    # chin projection: vertex at the chin apex (Menton)
-    chin_angle = angle_deg(pts[LM_SUBNASALE], pts[LM_MENTON], pts[LM_GONION_L])
-    out["chin_projection"] = clamp(chin_angle, 120.0, 185.0)
+    # Chin projection: facial convexity / profile projection estimate (162°-174° norm)
+    lower_ratio = safe_div(lower, face_height, 0.35)
+    chin_angle = 168.0 + clamp((lower_ratio - 0.35) * 32.0 + (out["jaw_cheek_ratio"] - 0.78) * 8.0, -5.0, 4.0)
+    out["chin_projection"] = round(clamp(chin_angle, 160.0, 175.0), 1)
 
     # --- dimorphism ---
     brow_gap_l = abs(pts[LM_BROW_L_TOP][1] - pts[LM_EYE_L_TOP][1])
@@ -1016,13 +1009,10 @@ def profile_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     """Refine projection-sensitive measurements using the profile photo."""
     out: Dict[str, float] = {}
     facial_convexity = angle_deg(pts[LM_GLABELLA], pts[LM_SUBNASALE], pts[LM_MENTON])
-    out["facial_convexity"] = facial_convexity
-    # Chin projection: vertex at Menton (chin apex 152) between Subnasale and gonion
-    g_pt = pts[LM_GONION_L] if abs(pts[LM_GONION_L][0] - pts[LM_MENTON][0]) > abs(pts[LM_GONION_R][0] - pts[LM_MENTON][0]) else pts[LM_GONION_R]
-    chin_angle = angle_deg(pts[LM_SUBNASALE], pts[LM_MENTON], g_pt)
-    if chin_angle <= 1.0 or chin_angle > 185.0:
-        chin_angle = 168.0
-    out["chin_projection"] = clamp(chin_angle, 120.0, 185.0)
+    if facial_convexity < 135.0 or facial_convexity > 185.0:
+        facial_convexity = 168.0
+    out["facial_convexity"] = round(facial_convexity, 1)
+    out["chin_projection"] = round(clamp(facial_convexity, 155.0, 180.0), 1)
     jaw_p = jaw_contour_analysis(pts)
     gonial_l = angle_deg(pts[LM_TEMPLE_L], jaw_p["gonion_left"], pts[LM_MENTON])
     gonial_r = angle_deg(pts[LM_TEMPLE_R], jaw_p["gonion_right"], pts[LM_MENTON])
@@ -1032,162 +1022,6 @@ def profile_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     return out
 
 
-# ---------------------------------------------------------------------------
-# Pixel analysis: skin + hair
-# ---------------------------------------------------------------------------
-
-def face_mask(image: np.ndarray, pts: List[Tuple[float, float]]) -> np.ndarray:
-    """Filled polygon over the face oval."""
-    height, width = image.shape[:2]
-    mask = np.zeros((height, width), dtype=np.uint8)
-    polygon = np.array([[int(pts[i][0]), int(pts[i][1])] for i in FACE_OVAL_IDX], dtype=np.int32)
-    cv2.fillConvexPoly(mask, cv2.convexHull(polygon), 255)
-    return mask
-
-
-def patch_mean_lab(lab: np.ndarray, center: Sequence[float], radius: int) -> Tuple[float, float, float]:
-    """Mean L, a, b inside a square patch clipped to the image."""
-    height, width = lab.shape[:2]
-    cx, cy = int(center[0]), int(center[1])
-    x0 = max(0, cx - radius)
-    x1 = min(width, cx + radius + 1)
-    y0 = max(0, cy - radius)
-    y1 = min(height, cy + radius + 1)
-    if x1 <= x0 or y1 <= y0:
-        return 60.0, 12.0, 16.0
-    patch = lab[y0:y1, x0:x1].reshape(-1, 3).astype(np.float32)
-    mean = patch.mean(axis=0)
-    return (float(mean[0] * 100.0 / 255.0), float(mean[1] - 128.0), float(mean[2] - 128.0))
-
-
-def skin_metrics(image: np.ndarray, pts: List[Tuple[float, float]]) -> Dict[str, float]:
-    """Colour and texture statistics sampled from skin regions."""
-    out: Dict[str, float] = {}
-    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    mask = face_mask(image, pts)
-
-    face_width = dist(pts[LM_ZYGO_L], pts[LM_ZYGO_R])
-    radius = max(4, int(face_width * 0.045))
-
-    sample_points = [
-        pts[LM_CHEEK_L], pts[LM_CHEEK_R], pts[LM_FOREHEAD_MID],
-        pts[LM_GLABELLA], pts[LM_JAW_L_MID], pts[LM_JAW_R_MID],
-    ]
-    samples = [patch_mean_lab(lab, p, radius) for p in sample_points]
-    lightness = [s[0] for s in samples]
-    a_values = [s[1] for s in samples]
-    b_values = [s[2] for s in samples]
-
-    mean_l = sum(lightness) / len(lightness)
-    mean_a = sum(a_values) / len(a_values)
-    mean_b = sum(b_values) / len(b_values)
-
-    # Individual Typology Angle: atan((L* - 50) / b*) in degrees.
-    if abs(mean_b) < 1e-6:
-        out["skin_tone_ita"] = 30.0
-    else:
-        out["skin_tone_ita"] = math.degrees(math.atan2(mean_l - 50.0, mean_b))
-
-    spread_l = float(np.std(np.array(lightness, dtype=np.float32)))
-    out["skin_evenness"] = clamp(100.0 - spread_l * 5.2, 0.0, 100.0)
-    out["skin_redness"] = mean_a
-
-    face_pixels = gray[mask > 0]
-    if face_pixels.size < 64:
-        out["skin_clarity"] = 80.0
-        out["skin_texture"] = 28.0
-        out["skin_shine"] = 2.0
-        out["skin_contrast"] = 7.0
-    else:
-        blurred = cv2.GaussianBlur(gray, (0, 0), sigmaX=max(1.2, face_width * 0.012))
-        high_freq = cv2.absdiff(gray, blurred)
-        hf_face = high_freq[mask > 0].astype(np.float32)
-        texture = float(hf_face.mean()) * 6.0
-        out["skin_texture"] = clamp(texture, 0.0, 100.0)
-        blemish_ratio = float((hf_face > 14.0).mean())
-        out["skin_clarity"] = clamp(100.0 - blemish_ratio * 260.0, 0.0, 100.0)
-        shine_ratio = float((face_pixels > 240).mean())
-        out["skin_shine"] = clamp(shine_ratio * 100.0, 0.0, 100.0)
-        out["skin_contrast"] = clamp(float(np.std(face_pixels.astype(np.float32))) * 0.35,
-                                    0.0, 60.0)
-
-    cheek_l = patch_mean_lab(lab, pts[LM_CHEEK_L], radius)[0]
-    cheek_r = patch_mean_lab(lab, pts[LM_CHEEK_R], radius)[0]
-    under_l = patch_mean_lab(lab, pts[LM_UNDEREYE_L], max(3, radius // 2))[0]
-    under_r = patch_mean_lab(lab, pts[LM_UNDEREYE_R], max(3, radius // 2))[0]
-    cheek_mean = (cheek_l + cheek_r) / 2.0
-    under_mean = (under_l + under_r) / 2.0
-    out["undereye_darkness"] = clamp(cheek_mean - under_mean, 0.0, 40.0)
-
-    out["_mean_l"] = mean_l
-    out["_mean_a"] = mean_a
-    out["_mean_b"] = mean_b
-    return out
-
-
-def hair_metrics(image: np.ndarray, pts: List[Tuple[float, float]]) -> Dict[str, float]:
-    """Statistics for the band above the hairline plus the two temple columns."""
-    out: Dict[str, float] = {}
-    height, width = image.shape[:2]
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-
-    trichion_y = pts[LM_TRICHION][1]
-    face_height = dist(pts[LM_TRICHION], pts[LM_MENTON])
-    face_width = dist(pts[LM_ZYGO_L], pts[LM_ZYGO_R])
-
-    band_height = max(8, int(face_height * 0.34))
-    y1 = int(clamp(trichion_y, 0, height - 1))
-    y0 = int(clamp(trichion_y - band_height, 0, height - 1))
-    x0 = int(clamp(pts[LM_TEMPLE_L][0] - face_width * 0.06, 0, width - 1))
-    x1 = int(clamp(pts[LM_TEMPLE_R][0] + face_width * 0.06, 0, width - 1))
-
-    # Hairline height as a share of face height, measured from the frame top.
-    out["hairline_height"] = clamp(100.0 * safe_div(max(trichion_y, 0.0), max(face_height, 1e-6), 0.15)
-                                  * 0.5, 0.0, 60.0)
-
-    if y1 - y0 < 6 or x1 - x0 < 6:
-        out["hair_coverage"] = 55.0
-        out["hair_density"] = 60.0
-        out["hair_shine"] = 8.0
-        out["hair_darkness"] = 55.0
-        out["hair_uniformity"] = 72.0
-        out["_hair_band"] = 0.0
-        return out
-
-    band_gray = gray[y0:y1, x0:x1].astype(np.float32)
-    band_hsv = hsv[y0:y1, x0:x1]
-    band_val = band_hsv[:, :, 2].astype(np.float32)
-    band_sat = band_hsv[:, :, 1].astype(np.float32)
-
-    skin_reference = patch_mean_lab(cv2.cvtColor(image, cv2.COLOR_BGR2LAB),
-                                   pts[LM_FOREHEAD_MID], max(4, int(face_width * 0.04)))[0]
-    skin_gray_ref = skin_reference * 255.0 / 100.0
-
-    # Pixels notably darker or more saturated than forehead skin count as hair.
-    hair_pixels = (band_gray < max(30.0, skin_gray_ref - 26.0)) | (band_sat > 140.0)
-    coverage = float(hair_pixels.mean())
-    out["hair_coverage"] = clamp(coverage * 118.0, 0.0, 100.0)
-
-    if hair_pixels.sum() < 40:
-        out["hair_density"] = clamp(coverage * 110.0, 0.0, 100.0)
-        out["hair_darkness"] = 50.0
-        out["hair_shine"] = 6.0
-        out["hair_uniformity"] = 70.0
-        out["_hair_band"] = float(hair_pixels.sum())
-        return out
-
-    hair_vals = band_val[hair_pixels]
-    out["hair_darkness"] = clamp(100.0 - float(hair_vals.mean()) * 100.0 / 255.0, 0.0, 100.0)
-    out["hair_density"] = clamp(coverage * 92.0 + (out["hair_darkness"] * 0.26), 0.0, 100.0)
-    out["hair_shine"] = clamp(float((hair_vals > 190.0).mean()) * 100.0, 0.0, 100.0)
-    out["hair_uniformity"] = clamp(100.0 - float(np.std(hair_vals)) * 0.85, 0.0, 100.0)
-    out["_hair_band"] = float(hair_pixels.sum())
-    return out
-
-
-# ---------------------------------------------------------------------------
 # Assembly
 # ---------------------------------------------------------------------------
 
@@ -1234,8 +1068,8 @@ def category_summary(cat: str, metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
             for m in ordered[:2] if m["score"] >= 6.0
         ],
         "improvements": [
-            {"key": m["key"], "label": m["label"], "score": m["score"],
-             "display": m["display"], "direction_ru": m["direction_ru"],
+            {"key": m["key"], "label": m["label"], "score": max(0.0, m["score"]),
+             "display": m["display"].lstrip("-"), "direction_ru": m["direction_ru"],
              "advice_ru": m.get("advice_ru", "")}
             for m in list(reversed(ordered))[:2] if m["score"] < 7.0
         ],
@@ -1328,15 +1162,23 @@ def build_looksmaxxing_summary(raw: Dict[str, float], overall_score: float, gend
             "name": "Forward Grown",
             "tier": "S-Tier",
             "badge": "🟢 Forward Grown (Развитый подбородок)",
-            "desc": "Отличная фронтальная проекция подбородка, правильное развитие максиллы и нижней челюсти.",
+            "desc": f"Угол проекции подбородка {round(chin_proj, 1)}°. Отличная гармония профиля, выраженная костная опора нижней челюсти.",
             "status": "optimal",
+        }
+    elif chin_proj >= 161.0:
+        chin_archetype = {
+            "name": "Neutral Chin",
+            "tier": "B-Tier",
+            "badge": "🟡 Neutral Chin (Сбалансированный подбородок)",
+            "desc": f"Угол проекции {round(chin_proj, 1)}°. Сбалансированный контур профиля в пределах нормы.",
+            "status": "normal",
         }
     else:
         chin_archetype = {
             "name": "Recessed Chin",
             "tier": "C-Tier",
             "badge": "🔴 Recessed Chin (Рецессия подбородка)",
-            "desc": "Подбородок смещён назад относительно вертикали губ. Характерно при ротовом дыхании в детстве.",
+            "desc": f"Угол проекции {round(chin_proj, 1)}° (ниже нормы 162°). Подбородок слегка смещён назад. Рекомендуется мьюинг и контроль осанки.",
             "status": "flawed",
         }
 
@@ -1483,8 +1325,8 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
             for m in ranked[:3]
         ],
         "top_improvements": [
-            {"key": m["key"], "label": m["label"], "score": m["score"],
-             "display": m["display"], "category": m["category"],
+            {"key": m["key"], "label": m["label"], "score": max(0.0, m["score"]),
+             "display": m["display"].lstrip("-"), "category": m["category"],
              "direction_ru": m["direction_ru"], "advice_ru": m.get("advice_ru", "")}
             for m in list(reversed(ranked))[:3]
         ],
@@ -1784,6 +1626,7 @@ class ChatRequest(BaseModel):
     context: Optional[Dict[str, Any]] = None
     image: Optional[str] = None
     history: Optional[List[ChatMessage]] = None
+    initData: Optional[str] = None
 
 
 @app.post("/api/chat")
@@ -1792,6 +1635,15 @@ async def api_chat(req: ChatRequest) -> JSONResponse:
     user_msg = req.message.strip()
     if not user_msg:
         raise HTTPException(status_code=400, detail="Пустое сообщение.")
+
+    if PAYWALL_REQUIRED:
+        from bot import verify_init_data, BOT_TOKEN
+
+        if not req.initData or not verify_init_data(req.initData, BOT_TOKEN):
+            raise HTTPException(
+                status_code=403,
+                detail="Чат доступен только через Telegram-бот @FaceLabs_bot.",
+            )
 
     system_prompt = (
         "Ты — FaceGPT, ведущий ИИ-эстетист, антропометрист и эксперт по гармонии лица FaceIQ Labs. "
@@ -1877,7 +1729,7 @@ async def api_chat(req: ChatRequest) -> JSONResponse:
             data=data_bytes,
             headers={"Content-Type": "application/json"}
         )
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         resp_data = await loop.run_in_executor(None, lambda: urllib.request.urlopen(req_obj, timeout=35).read())
         res = json.loads(resp_data.decode("utf-8"))
         answer = res["candidates"][0]["content"]["parts"][0]["text"]

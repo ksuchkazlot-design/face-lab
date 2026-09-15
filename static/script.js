@@ -51,7 +51,7 @@
   };
 
   var PRIMARY_CATS = ["harmony", "angularity", "dimorphism", "features"];
-  var SECONDARY_CATS = ["skin", "hair"];
+  var SECONDARY_CATS = [];
 
   var ANALYSIS_PAGE = {
     harmony: "/analysis/harmony.html",
@@ -600,6 +600,10 @@
           state.busy = false;
           renderReport();
           setStep(4);
+          createHistoryThumb(state.frontData, function (thumb) {
+            saveToHistory(state.analysis, thumb);
+            renderHistory();
+          });
           initMetricObserver();
           var frontImg = $("resultFront");
           if (frontImg) frontImg.classList.add("photo-reveal");
@@ -756,10 +760,7 @@
       analysisPhoto.src = state.frontData;
     }
 
-    createHistoryThumb(state.frontData, function (thumb) {
-      saveToHistory(data, thumb);
-      renderHistory();
-    });
+    renderHistory();
   }
 
   function createHistoryThumb(dataUrl, callback) {
@@ -788,12 +789,26 @@
   }
 
   function saveToHistory(data, thumbUrl) {
+    if (!data) return;
     try {
       var history = JSON.parse(localStorage.getItem("faceLabHistory") || "[]");
+      var currentScore = (data.overall && data.overall.score) || 0;
+      var genAt = data.generated_at || Math.floor(Date.now() / 1000);
+
+      // Deduplicate: if the most recent entry has identical score and was created recently
+      if (history.length > 0) {
+        var latest = history[0];
+        if (latest.generated_at === genAt ||
+            (Math.abs(latest.score - currentScore) < 0.001 && Math.abs(Date.now() - (latest.timestamp || 0)) < 60000)) {
+          return;
+        }
+      }
+
       var scanItem = {
-        id: "scan_" + Date.now(),
+        id: "scan_" + genAt,
+        generated_at: genAt,
         timestamp: Date.now(),
-        score: (data.overall && data.overall.score) || 0,
+        score: currentScore,
         thumb: thumbUrl || "",
         cats: (data.categories || []).map(function (c) {
           return { key: c.key, score: c.score, color: c.color };
@@ -1395,18 +1410,46 @@
     var badgeEl = $("analysisPanelBadge");
 
     if (isSideMode) {
-      var cat = catByKey(currentAnalysisCat) || catByKey("harmony");
+      if (currentAnalysisCat === "harmony" || currentAnalysisCat === "dimorphism") {
+        var catName = currentAnalysisCat === "harmony" ? "Harmony" : "Dimorphism";
+        if (titleEl) titleEl.textContent = catName + " (Только анфас)";
+        if (badgeEl) badgeEl.textContent = "0 ratios";
+        var notice = document.createElement("div");
+        notice.style.cssText = "padding:28px 16px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6;";
+        notice.innerHTML = "<div style='font-size:26px;margin-bottom:10px;'>📐</div>" +
+          "Все показатели категории <strong>" + catName + "</strong> оцениваются во фронтальной проекции (анфас).<br>" +
+          "Боковой профиль детально анализируется во вкладках <strong>Angularity</strong> и <strong>Features</strong>.<br><br>" +
+          "<button type='button' class='btn btn--sm btn--primary js-switch-front' style='margin-right:8px;'>Смотреть анфас</button>" +
+          "<button type='button' class='btn btn--sm btn--ghost js-switch-ang'>Профиль в Angularity</button>";
+        host.appendChild(notice);
+        var swFront = notice.querySelector(".js-switch-front");
+        if (swFront) {
+          swFront.addEventListener("click", function () {
+            var tf = $("analysisToggleFront");
+            if (tf) tf.click();
+          });
+        }
+        var swAng = notice.querySelector(".js-switch-ang");
+        if (swAng) {
+          swAng.addEventListener("click", function () {
+            var tab = document.querySelector("#analysisCatTabs [data-cat='angularity']");
+            if (tab) tab.click();
+          });
+        }
+        renderAnalysisStageOverlay();
+        return;
+      }
+
+      var cat = catByKey(currentAnalysisCat) || catByKey("angularity");
       var catTitle = cat ? cat.title : "Side";
       if (titleEl) titleEl.textContent = "Your " + catTitle + " (Side) Ratios";
 
-      // Profile-valid metrics per category - strictly exclude frontal width metrics
+      // Profile-valid metrics strictly belonging to the respective category
       var sideKeysByCat = {
-        harmony: ["chin_projection", "lower_third"],
-        angularity: ["gonial_angle", "ramus_ratio", "mandible_definition", "chin_projection"],
-        dimorphism: ["gonial_angle", "ramus_ratio", "chin_projection", "lower_third"],
-        features: ["nose_length", "philtrum_length"]
+        angularity: ["gonial_angle", "chin_projection", "ramus_ratio", "mandible_definition"],
+        features: ["nose_length", "nasal_index", "philtrum_length"]
       };
-      var sideKeys = sideKeysByCat[currentAnalysisCat] || ["chin_projection", "gonial_angle", "ramus_ratio", "mandible_definition", "nose_length", "philtrum_length", "lower_third"];
+      var sideKeys = sideKeysByCat[currentAnalysisCat] || ["gonial_angle", "chin_projection", "ramus_ratio", "mandible_definition"];
       var sideMetrics = [];
       sideKeys.forEach(function (k) {
         if (data.metrics && data.metrics[k]) {
@@ -1449,20 +1492,20 @@
     interocular_ratio: [[133, 362], [33, 133]],
     eye_spacing_symmetry: [[10, 152], [33, 133], [263, 362]],
 
-    gonial_angle: [[127, 132], [132, 152], [356, 288], [288, 152]],
+    gonial_angle: [[127, 172], [172, 152], [356, 397], [397, 152]],
     cheekbone_prominence: [[234, 454], [127, 356]],
-    jaw_cheek_ratio: [[132, 288], [234, 454]],
-    jaw_frontal_angle: [[132, 152], [288, 152]],
-    chin_width_ratio: [[148, 377], [132, 288]],
-    mandible_definition: [[132, 288], [132, 152], [288, 152]],
-    ramus_ratio: [[127, 132], [132, 152]],
-    bigonial_width: [[132, 288], [10, 152]],
-    chin_projection: [[2, 152], [132, 152]],
-    jaw_mass: [[132, 288], [2, 152]],
+    jaw_cheek_ratio: [[172, 397], [234, 454]],
+    jaw_frontal_angle: [[172, 152], [397, 152]],
+    chin_width_ratio: [[148, 377], [172, 397]],
+    mandible_definition: [[172, 397], [172, 152], [397, 152]],
+    ramus_ratio: [[127, 172], [172, 152]],
+    bigonial_width: [[172, 397], [10, 152]],
+    chin_projection: [[9, 2], [2, 152]],
+    jaw_mass: [[172, 397], [2, 152]],
 
     brow_ridge: [[105, 159], [334, 386]],
     lip_thickness: [[0, 13], [14, 17], [61, 291]],
-    dimorphism_index: [[105, 159], [132, 288], [17, 152]],
+    dimorphism_index: [[105, 159], [172, 397], [17, 152]],
     brow_tilt: [[55, 46], [285, 276]],
     eye_aperture: [[159, 145], [386, 374]],
     cheek_fullness: [[205, 425], [234, 454]],
@@ -1574,43 +1617,6 @@
         list.push({
           icon: "✨",
           title: "Practical Recommendation",
-          desc: metric.advice_ru
-        });
-      }
-    } else if (metric.category === "skin") {
-      list.push({
-        icon: "🌿",
-        title: "Dermal Texture & Luminosity",
-        desc: "Отражает чистоту микрорельефа, равномерность светорассеяния и плотность защитного барьера."
-      });
-      list.push({
-        icon: "🛡",
-        title: "Skin Barrier & Even Tone",
-        desc: isNorm ? "Минимальный уровень воспалений и ровный цветовой баланс кожи."
-                     : "Рекомендуется усилить базовое увлажнение, использовать SPF и антиоксиданты."
-      });
-      if (metric.advice_ru) {
-        list.push({
-          icon: "🧴",
-          title: "Skincare Protocol",
-          desc: metric.advice_ru
-        });
-      }
-    } else {
-      list.push({
-        icon: "✂️",
-        title: "Hairline Frame & Density",
-        desc: "Форма линии роста волос формирует пропорции лба и балансирует верхнюю треть лица."
-      });
-      list.push({
-        icon: "💆",
-        title: "Scalp Microcirculation & Volume",
-        desc: "Плотность волос и качество прикорневого объёма определяют общую архитектуру образа."
-      });
-      if (metric.advice_ru) {
-        list.push({
-          icon: "💈",
-          title: "Styling & Grooming",
           desc: metric.advice_ru
         });
       }
@@ -1783,22 +1789,22 @@
       ctx.restore();
     }
 
-    // 1. ANGLES: Gonial, Frontal Jaw, Chin Projection, Brow Tilt
-    if (key === "gonial_angle" || key === "jaw_frontal_angle" || key === "chin_projection" || key === "brow_tilt" || key.indexOf("angle") !== -1) {
+    // 1. ANGLES: Gonial, Frontal Jaw, Chin Projection
+    if (key === "gonial_angle" || key === "jaw_frontal_angle" || key === "chin_projection" || (key.indexOf("angle") !== -1 && key !== "brow_tilt")) {
       var p1, vertex, p2;
       if (key === "gonial_angle") {
-        // Gonial Angle vertex is at the Gonion (jaw angle corner)
+        // Gonial Angle vertex is at the Gonion (jaw angle corner 172)
         p1 = pt(127); // upper ramus / condyle
-        vertex = pt(132); // gonion
+        vertex = pt(172); // gonion
         p2 = pt(152); // menton / chin
       } else if (key === "jaw_frontal_angle") {
-        // Jaw Frontal Angle vertex is at the Chin (menton) between gonions 132 and 288
-        p1 = pt(132); vertex = pt(152); p2 = pt(288);
+        // Jaw Frontal Angle vertex is at the Chin (menton 152) between gonions 172 and 397
+        p1 = pt(172); vertex = pt(152); p2 = pt(397);
       } else if (key === "chin_projection") {
-        // Chin Projection vertex is at the Chin (menton 152) between Subnasale (2) and Gonion (132)
-        p1 = pt(2); vertex = pt(152); p2 = pt(132);
+        // Chin Projection: profile facial angle Glabella (9) -> Subnasale (2) -> Menton (152)
+        p1 = pt(9); vertex = pt(2); p2 = pt(152);
       } else {
-        p1 = pt(55); vertex = pt(46); p2 = pt(276);
+        p1 = pt(172); vertex = pt(152); p2 = pt(397);
       }
 
       // Arms
@@ -1841,9 +1847,31 @@
       var textY = vertex[1] + Math.sin(midA) * 52;
       drawBadge(textX, textY, metric.display);
 
+    } else if (key === "brow_tilt") {
+      var bl_in = pt(55), bl_out = pt(46);
+      var br_in = pt(285), br_out = pt(276);
+
+      ctx.lineWidth = 2.8;
+      ctx.strokeStyle = cyan;
+      ctx.shadowColor = cyanGlow;
+      ctx.shadowBlur = 8;
+
+      [ [bl_in, bl_out], [br_in, br_out] ].forEach(function (pair) {
+        ctx.beginPath();
+        ctx.moveTo(pair[0][0], pair[0][1]);
+        ctx.lineTo(pair[1][0], pair[1][1]);
+        ctx.stroke();
+        drawDot(pair[0], false);
+        drawDot(pair[1], true);
+      });
+
+      var midX = (bl_out[0] + bl_in[0]) / 2;
+      var midY = (bl_out[1] + bl_in[1]) / 2 - 18;
+      drawBadge(midX, midY, metric.display);
+
     } else if (key === "ramus_ratio") {
       var condyle = pt(127);
-      var gonion = pt(132);
+      var gonion = pt(172);
       var chin = pt(152);
 
       // Ramus segment
@@ -2143,6 +2171,11 @@
     if (overlay) {
       overlay.classList.remove("is-open");
       overlay.setAttribute("aria-hidden", "true");
+    }
+    var canvas = $("modalRatioCanvas");
+    if (canvas) {
+      var ctx = canvas.getContext("2d");
+      if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
     haptic("light");
   }
@@ -2502,6 +2535,7 @@
       var metric = data.metrics[imp.key];
       var catName = imp.category ? (imp.category.charAt(0).toUpperCase() + imp.category.slice(1)) : "Harmony";
       var advice = imp.advice_ru || (metric ? metric.advice_ru : "") || "Оптимизация баланса и регулярный уход.";
+      var impVal = Math.max(12, 45 - i * 8);
       steps.push({
         num: i + 1,
         title: imp.label + ": Протокол гармонизации",
@@ -2511,7 +2545,7 @@
         metricKey: imp.key,
         metricLabel: imp.label,
         cost: i % 2 === 0 ? "$0 (естественные практики)" : "$30 – $80",
-        impact: "+0." + (45 - i * 8) + " " + catName
+        impact: "+0." + impVal + " " + catName
       });
     });
 
@@ -2843,17 +2877,6 @@
         "линия челюсти.</p>";
     }
 
-    if (kind === "skin") {
-      var cat = catByKey("skin");
-      var evenness = data.metrics.skin_evenness;
-      var clarity = data.metrics.skin_clarity;
-      var undereye = data.metrics.undereye_darkness;
-      return "<p>Категория Skin — " + fmt(cat.score, 1) + " из 10.</p>" +
-        "<p>Ровность тона " + evenness.display + ", чистота " + clarity.display +
-        ", затемнение под глазами " + undereye.display + ".</p>" +
-        "<p>Учтите: пиксельные метрики чувствительны к освещению кадра.</p>";
-    }
-
     return "<p>Общий балл " + fmt(overall.score, 1) + ". Сильнее всего — " +
       (best ? best.label : "—") + ", слабее — " + (worst ? worst.label : "—") + ".</p>";
   }
@@ -2916,7 +2939,8 @@
       message: text,
       context: ctx,
       image: state.frontData || null,
-      history: gptHistory
+      history: gptHistory,
+      initData: tgInitData || null
     };
 
     fetch("/api/chat", {

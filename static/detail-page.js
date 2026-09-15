@@ -23,20 +23,20 @@
     interocular_ratio: [[133, 362], [33, 133]],
     eye_spacing_symmetry: [[10, 152], [33, 133], [263, 362]],
 
-    gonial_angle: [[127, 132], [132, 152], [356, 288], [288, 152]],
+    gonial_angle: [[127, 172], [172, 152], [356, 397], [397, 152]],
     cheekbone_prominence: [[234, 454], [127, 356]],
-    jaw_cheek_ratio: [[132, 288], [234, 454]],
-    jaw_frontal_angle: [[132, 152], [288, 152]],
-    chin_width_ratio: [[148, 377], [132, 288]],
-    mandible_definition: [[132, 288], [132, 152], [288, 152]],
-    ramus_ratio: [[127, 132], [132, 152]],
-    bigonial_width: [[132, 288], [10, 152]],
-    chin_projection: [[2, 152], [132, 152]],
-    jaw_mass: [[132, 288], [2, 152]],
+    jaw_cheek_ratio: [[172, 397], [234, 454]],
+    jaw_frontal_angle: [[172, 152], [397, 152]],
+    chin_width_ratio: [[148, 377], [172, 397]],
+    mandible_definition: [[172, 397], [172, 152], [397, 152]],
+    ramus_ratio: [[127, 172], [172, 152]],
+    bigonial_width: [[172, 397], [10, 152]],
+    chin_projection: [[9, 2], [2, 152]],
+    jaw_mass: [[172, 397], [2, 152]],
 
     brow_ridge: [[105, 159], [334, 386]],
     lip_thickness: [[0, 13], [14, 17], [61, 291]],
-    dimorphism_index: [[105, 159], [132, 288], [17, 152]],
+    dimorphism_index: [[105, 159], [172, 397], [17, 152]],
     brow_tilt: [[55, 46], [285, 276]],
     eye_aperture: [[159, 145], [386, 374]],
     cheek_fullness: [[205, 425], [234, 454]],
@@ -211,43 +211,6 @@
         list.push({
           icon: "✨",
           title: "Practical Recommendation",
-          desc: metric.advice_ru
-        });
-      }
-    } else if (metric.category === "skin") {
-      list.push({
-        icon: "🌿",
-        title: "Dermal Texture & Luminosity",
-        desc: "Отражает чистоту микрорельефа, равномерность светорассеяния и плотность защитного барьера."
-      });
-      list.push({
-        icon: "🛡",
-        title: "Skin Barrier & Even Tone",
-        desc: isNorm ? "Минимальный уровень воспалений и ровный цветовой баланс кожи."
-                     : "Рекомендуется усилить базовое увлажнение, использовать SPF и антиоксиданты."
-      });
-      if (metric.advice_ru) {
-        list.push({
-          icon: "🧴",
-          title: "Skincare Protocol",
-          desc: metric.advice_ru
-        });
-      }
-    } else {
-      list.push({
-        icon: "✂️",
-        title: "Hairline Frame & Density",
-        desc: "Форма линии роста волос формирует пропорции лба и балансирует верхнюю треть лица."
-      });
-      list.push({
-        icon: "💆",
-        title: "Scalp Microcirculation & Volume",
-        desc: "Плотность волос и качество прикорневого объёма определяют общую архитектуру образа."
-      });
-      if (metric.advice_ru) {
-        list.push({
-          icon: "💈",
-          title: "Styling & Grooming",
           desc: metric.advice_ru
         });
       }

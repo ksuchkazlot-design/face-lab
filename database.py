@@ -127,16 +127,12 @@ def add_paid_credits(user_id: int, count: int = 1):
 def consume_analysis_credit(user_id: int) -> bool:
     """Consume one paid analysis credit. Returns True if a credit was available."""
     with get_db() as db:
-        row = db.execute(
-            "SELECT paid_analyses FROM users WHERE user_id = ?", (user_id,)
-        ).fetchone()
-        if not row or row["paid_analyses"] <= 0:
-            return False
-        db.execute(
-            "UPDATE users SET paid_analyses = paid_analyses - 1 WHERE user_id = ?",
+        cursor = db.execute(
+            "UPDATE users SET paid_analyses = paid_analyses - 1 "
+            "WHERE user_id = ? AND paid_analyses > 0",
             (user_id,),
         )
-        return True
+        return cursor.rowcount > 0
 
 
 def has_paid_credit(user_id: int) -> bool:

@@ -9,3 +9,11 @@
         value: 8000
       - key: FACE_LAB_BOT
         value: 1
+      - key: FACE_LAB_PAYWALL
+        value: "1"
+      - key: FACE_LAB_BOT_TOKEN
+        sync: false
+      - key: ADMIN_USER_IDS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
