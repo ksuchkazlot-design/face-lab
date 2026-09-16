@@ -5,6 +5,7 @@ Handles /start, channel check, Stars payments, WebApp launch.
 
 import hmac
 import hashlib
+import html
 import json
 import logging
 import os
@@ -37,7 +38,11 @@ logger = logging.getLogger("face-lab-bot")
 # Config
 # ---------------------------------------------------------------------------
 
-BOT_TOKEN = os.environ.get("FACE_LAB_BOT_TOKEN") or os.environ.get("TELEGRAM_BOT_TOKEN", "")
+BOT_TOKEN = (
+    os.environ.get("FACE_LAB_BOT_TOKEN")
+    or os.environ.get("TELEGRAM_BOT_TOKEN")
+    or "8689574065:AAFyUzrq2nlnk4KPxIdiulEbQUYVCzoAxHI"
+)
 CHANNEL_LINK = os.environ.get(
     "FACE_LAB_CHANNEL_LINK",
     "https://t.me/FACELABS1",
@@ -65,6 +70,9 @@ PACK_CREDITS = {
 # WebApp URL helper
 # ---------------------------------------------------------------------------
 
+DEFAULT_WEBAPP_URL = "https://face-lab.onrender.com"
+
+
 def _webapp_url() -> str:
     url = os.environ.get("FACE_LAB_WEBAPP_URL", "").strip() or os.environ.get("RENDER_EXTERNAL_URL", "").strip()
     if url:
@@ -80,7 +88,7 @@ def _webapp_url() -> str:
             pass
     if WEBAPP_URL:
         return WEBAPP_URL.rstrip("/")
-    return "http://127.0.0.1:8000"
+    return DEFAULT_WEBAPP_URL
 
 
 # ---------------------------------------------------------------------------
@@ -118,10 +126,15 @@ async def check_channel_member(user_id: int, context: ContextTypes.DEFAULT_TYPE)
         return True
     try:
         member = await context.bot.get_chat_member(CHANNEL_USERNAME, user_id)
-        return member.status in ("member", "administrator", "creator", "restricted")
+        if member.status in ("member", "administrator", "creator", "restricted"):
+            return True
+        if member.status in ("left", "kicked"):
+            return False
+        return True
     except Exception as e:
         logger.warning(f"Channel check failed for {user_id}: {e}")
-        return False
+        # Fail-open if Telegram API cannot check channel (e.g., bot permissions or outage)
+        return True
 
 
 # ---------------------------------------------------------------------------
@@ -174,44 +187,59 @@ def prices_keyboard() -> InlineKeyboardMarkup:
 # ---------------------------------------------------------------------------
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    db.upsert_user(user.id, user.username or "", user.first_name or "")
+    try:
+        user = update.effective_user
+        if not user or not update.message:
+            return
+        db.upsert_user(user.id, user.username or "", user.first_name or "")
 
-    is_member = await check_channel_member(user.id, context)
-    if not is_member:
+        is_member = await check_channel_member(user.id, context)
+        if not is_member:
+            await update.message.reply_text(
+                f"👋 Добро пожаловать в <b>Face Lab</b>!\n\n"
+                f"Для доступа к боту и анализу лица подпишитесь на наш официальный канал:\n"
+                f"👉 <a href=\"{CHANNEL_LINK}\">{CHANNEL_USERNAME}</a>\n\n"
+                f"После подписки нажмите кнопку <b>«Проверить подписку»</b> ниже:",
+                parse_mode="HTML",
+                disable_web_page_preview=True,
+                reply_markup=channel_sub_keyboard(),
+            )
+            return
+
+        user_info = db.get_user(user.id) or {}
+        credits = user_info.get("paid_analyses", 0)
+        safe_name = html.escape(user.first_name or "друг")
+
+        if credits > 0:
+            text = (
+                f"👋 Привет, <b>{safe_name}</b>!\n\n"
+                f"💎 Доступно анализов: <b>{credits}</b>\n\n"
+                f"Нажмите «🔍 Запустить анализ лица» для перехода к сканеру."
+            )
+        else:
+            text = (
+                f"👋 Привет, <b>{safe_name}</b>!\n\n"
+                f"🔬 <b>Face Lab</b> — профессиональный биометрический анализ лица по 38 метрикам.\n\n"
+                f"Нажмите «🔍 Запустить анализ лица» чтобы посмотреть приложение.\n"
+                f"Для полного анализа купите пакет анализов — <b>от 50₽ за анализ</b> (по цене батончика 🍫)."
+            )
+
         await update.message.reply_text(
-            f"👋 Добро пожаловать в <b>Face Lab</b>!\n\n"
-            f"Для доступа к боту и анализу лица подпишитесь на наш официальный канал:\n"
-            f"👉 <a href=\"{CHANNEL_LINK}\">{CHANNEL_USERNAME}</a>\n\n"
-            f"После подписки нажмите кнопку <b>«Проверить подписку»</b> ниже:",
+            text,
             parse_mode="HTML",
-            disable_web_page_preview=True,
-            reply_markup=channel_sub_keyboard(),
+            reply_markup=main_menu_keyboard(credits),
         )
-        return
-
-    user_info = db.get_user(user.id) or {}
-    credits = user_info.get("paid_analyses", 0)
-
-    if credits > 0:
-        text = (
-            f"👋 Привет, <b>{user.first_name}</b>!\n\n"
-            f"💎 Доступно анализов: <b>{credits}</b>\n\n"
-            f"Нажмите «🔍 Запустить анализ лица» для перехода к сканеру."
-        )
-    else:
-        text = (
-            f"👋 Привет, <b>{user.first_name}</b>!\n\n"
-            f"🔬 <b>Face Lab</b> — профессиональный биометрический анализ лица по 38 метрикам.\n\n"
-            f"Нажмите «🔍 Запустить анализ лица» чтобы посмотреть приложение.\n"
-            f"Для полного анализа купите пакет анализов — <b>от 50₽ за анализ</b> (по цене батончика 🍫)."
-        )
-
-    await update.message.reply_text(
-        text,
-        parse_mode="HTML",
-        reply_markup=main_menu_keyboard(credits),
-    )
+    except Exception as e:
+        logger.exception(f"Error in cmd_start: {e}")
+        if update.message:
+            try:
+                await update.message.reply_text(
+                    "👋 Привет! Добро пожаловать в Face Lab.\n\n"
+                    "Нажмите кнопку ниже, чтобы запустить анализ лица:",
+                    reply_markup=main_menu_keyboard(0),
+                )
+            except Exception:
+                pass
 
 
 # ---------------------------------------------------------------------------
@@ -232,7 +260,7 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer("✅ Подписка подтверждена!")
         user_info = db.get_user(user_id) or {}
         credits = user_info.get("paid_analyses", 0)
-        first_name = query.from_user.first_name or "друг"
+        first_name = html.escape(query.from_user.first_name or "друг")
 
         if credits > 0:
             text = (

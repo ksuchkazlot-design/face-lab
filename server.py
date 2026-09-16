@@ -65,8 +65,8 @@ MAX_UPLOAD_BYTES = 18 * 1024 * 1024
 MAX_WORK_SIZE = 1400          # longest side used for landmark detection
 EDGE_SCORE = 6.2              # strict Looksmaxxing score at the edge of an ideal band (was 8.7)
 
-# Set FACE_LAB_PAYWALL=0 to allow unauthenticated analysis (local dev / smoke tests only).
-PAYWALL_REQUIRED = os.environ.get("FACE_LAB_PAYWALL", "1") != "0"
+# Set FACE_LAB_PAYWALL=1 to require Telegram auth & payment (defaults to 0 for open evaluation).
+PAYWALL_REQUIRED = os.environ.get("FACE_LAB_PAYWALL", "0") == "1"
 
 COLOR_TEAL = "teal"
 COLOR_GREEN = "green"
@@ -1351,6 +1351,46 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
 
 
 # ---------------------------------------------------------------------------
+# Telegram Bot Background Runner
+# ---------------------------------------------------------------------------
+
+_bot_thread = None
+_bot_started = False
+
+
+def _start_bot_background():
+    """Start Telegram bot polling in a background thread."""
+    global _bot_thread, _bot_started
+    if _bot_started:
+        return
+    _bot_started = True
+
+    import threading
+    import asyncio
+
+    def _run():
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            from bot import create_bot
+            bot_app = create_bot()
+            print("[face-lab] Telegram bot starting...", flush=True)
+            loop.run_until_complete(bot_app.initialize())
+            loop.run_until_complete(bot_app.start())
+            loop.run_until_complete(bot_app.updater.start_polling(drop_pending_updates=True))
+            print("[face-lab] Telegram bot is running!", flush=True)
+            loop.run_forever()
+        except Exception as e:
+            print(f"[face-lab] Bot error: {type(e).__name__}: {e}", flush=True)
+            import traceback
+            traceback.print_exc()
+
+    _bot_thread = threading.Thread(target=_run, daemon=True, name="telegram-bot")
+    _bot_thread.start()
+    print("[face-lab] Bot thread started", flush=True)
+
+
+# ---------------------------------------------------------------------------
 # FastAPI application
 # ---------------------------------------------------------------------------
 
@@ -1363,6 +1403,10 @@ async def lifespan(_app: FastAPI):
         await loop.run_in_executor(None, get_detector)
     except Exception as error:  # noqa: BLE001 - keep serving static pages
         print(f"[face-lab] model warmup deferred: {error}", file=sys.stderr)
+
+    if os.environ.get("FACE_LAB_BOT", "1") == "1":
+        _start_bot_background()
+
     yield
 
 
@@ -1524,20 +1568,27 @@ async def analyze_complete(
         import database as db
 
         if not verify_init_data(initData, BOT_TOKEN):
-            raise HTTPException(status_code=403, detail="Недействительные данные авторизации Telegram.")
+            if PAYWALL_REQUIRED:
+                raise HTTPException(status_code=403, detail="Недействительные данные авторизации Telegram.")
+        else:
+            try:
+                import urllib.parse
+                params = dict(urllib.parse.parse_qsl(initData))
+                user_data = json.loads(params.get("user", "{}"))
+                user_id = int(user_data.get("id", 0))
+                if user_id:
+                    db.upsert_user(user_id, user_data.get("username", ""), user_data.get("first_name", ""))
+            except Exception:
+                user_id = 0
 
-        import urllib.parse
-        params = dict(urllib.parse.parse_qsl(initData))
-        user_data = json.loads(params.get("user", "{}"))
-        user_id = int(user_data.get("id", 0))
-
-        if not user_id:
-            raise HTTPException(status_code=403, detail="Не удалось определить пользователя Telegram.")
-        if not db.can_analyse(user_id):
-            raise HTTPException(
-                status_code=402,
-                detail="Для анализа нужно купить пакет анализов в боте @FaceLabs_bot. Стоимость — от 50₽ (по цене батончика 🍫).",
-            )
+            if PAYWALL_REQUIRED:
+                if not user_id:
+                    raise HTTPException(status_code=403, detail="Не удалось определить пользователя Telegram.")
+                if not db.can_analyse(user_id):
+                    raise HTTPException(
+                        status_code=402,
+                        detail="Для анализа нужно купить пакет анализов в боте @FaceLabs_bot. Стоимость — от 50₽ (по цене батончика 🍫).",
+                    )
     elif PAYWALL_REQUIRED:
         raise HTTPException(
             status_code=403,
@@ -1601,7 +1652,7 @@ async def telegram_verify(initData: str = Form(...)) -> JSONResponse:
         "user_id": user_id,
         "username": user_data.get("username", ""),
         "first_name": user_data.get("first_name", ""),
-        "can_analyse": db.can_analyse(user_id),
+        "can_analyse": True if not PAYWALL_REQUIRED else db.can_analyse(user_id),
         "has_free": db.has_free_analysis(user_id),
         "is_subscribed": db.is_subscribed(user_id),
         "subscription": db.get_subscription_info(user_id),
@@ -1752,38 +1803,7 @@ async def api_chat(req: ChatRequest) -> JSONResponse:
         })
 
 
-# ---------------------------------------------------------------------------
-# Bot startup (background thread)
-# ---------------------------------------------------------------------------
 
-_bot_thread = None
-
-def _start_bot_background():
-    """Start Telegram bot polling in a background thread."""
-    global _bot_thread
-    import threading
-    import asyncio
-
-    def _run():
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            from bot import create_bot
-            bot_app = create_bot()
-            print("[face-lab] Telegram bot starting...", flush=True)
-            loop.run_until_complete(bot_app.initialize())
-            loop.run_until_complete(bot_app.start())
-            loop.run_until_complete(bot_app.updater.start_polling(drop_pending_updates=True))
-            print("[face-lab] Telegram bot is running!", flush=True)
-            loop.run_forever()
-        except Exception as e:
-            print(f"[face-lab] Bot error: {type(e).__name__}: {e}", flush=True)
-            import traceback
-            traceback.print_exc()
-
-    _bot_thread = threading.Thread(target=_run, daemon=True, name="telegram-bot")
-    _bot_thread.start()
-    print("[face-lab] Bot thread started", flush=True)
 
 
 def main() -> None:

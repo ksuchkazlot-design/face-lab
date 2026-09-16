@@ -1,4 +1,4 @@
-﻿services:
+services:
   - type: web
     name: face-lab
     runtime: docker
@@ -10,9 +10,11 @@
       - key: FACE_LAB_BOT
         value: 1
       - key: FACE_LAB_PAYWALL
-        value: "1"
+        value: "0"
       - key: FACE_LAB_BOT_TOKEN
-        sync: false
+        value: "8689574065:AAFyUzrq2nlnk4KPxIdiulEbQUYVCzoAxHI"
+      - key: FACE_LAB_WEBAPP_URL
+        value: "https://face-lab.onrender.com"
       - key: ADMIN_USER_IDS
         sync: false
       - key: GEMINI_API_KEY
