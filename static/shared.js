@@ -33,6 +33,10 @@
 
   function safeGet(key) {
     try {
+      var s = window.sessionStorage.getItem(key);
+      if (s) return s;
+    } catch (e) {}
+    try {
       return window.localStorage.getItem(key);
     } catch (error) {
       return null;
@@ -41,11 +45,75 @@
 
   function safeSet(key, value) {
     try {
+      window.sessionStorage.setItem(key, value);
+    } catch (e) {}
+    try {
       window.localStorage.setItem(key, value);
       return true;
     } catch (error) {
       return false;
     }
+  }
+
+  var DB_NAME = "FaceLabDB";
+  var DB_STORE = "photos";
+
+  function getDB() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error("No indexedDB"));
+        return;
+      }
+      var req = window.indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(DB_STORE)) {
+          db.createObjectStore(DB_STORE);
+        }
+      };
+      req.onsuccess = function (e) {
+        resolve(e.target.result);
+      };
+      req.onerror = function (e) {
+        reject(e.target.error);
+      };
+    });
+  }
+
+  function dbGet(key) {
+    return getDB().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(DB_STORE, "readonly");
+        var store = tx.objectStore(DB_STORE);
+        var req = store.get(key);
+        req.onsuccess = function () {
+          resolve(req.result || null);
+        };
+        req.onerror = function () {
+          resolve(null);
+        };
+      });
+    }).catch(function () {
+      return null;
+    });
+  }
+
+  function dbSet(key, value) {
+    return getDB().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(DB_STORE, "readwrite");
+        var store = tx.objectStore(DB_STORE);
+        store.put(value, key);
+        tx.oncomplete = function () {
+          resolve(true);
+        };
+        tx.onerror = function () {
+          resolve(false);
+        };
+      });
+    }).catch(function () {
+      return false;
+    });
   }
 
   function $(id) {
@@ -344,6 +412,11 @@
     if (thumb && front) {
       thumb.src = front;
     }
+    dbGet(STORAGE.front).then(function (dbFront) {
+      if (thumb && dbFront && (!thumb.src || thumb.src.indexOf("data:") === -1)) {
+        thumb.src = dbFront;
+      }
+    });
     if (title) {
       title.textContent = opts.title || "FACE LAB";
     }
@@ -375,7 +448,7 @@
 
     var front = safeGet(STORAGE.front);
     var profile = safeGet(STORAGE.profile);
-    var mode = "front";
+    var mode = opts.initialMode || "front";
     var overlayMode = opts.overlay || "mesh";
 
     function paint() {
@@ -419,8 +492,25 @@
       }
     }
 
+    dbGet(STORAGE.front).then(function (dbFront) {
+      if (dbFront) {
+        front = dbFront;
+        var thumb = $("stickyThumb");
+        if (thumb && (!thumb.src || thumb.src.indexOf("data:") === -1)) thumb.src = dbFront;
+        if (mode === "front") paint();
+      }
+    });
+    dbGet(STORAGE.profile).then(function (dbProfile) {
+      if (dbProfile) {
+        profile = dbProfile;
+        if (mode === "profile" || mode === "side") paint();
+      }
+    });
+
     if (toggle) {
       qsa(".toggle__btn", toggle).forEach(function (button) {
+        var btnSide = button.getAttribute("data-side");
+        button.classList.toggle("is-active", btnSide === mode);
         button.addEventListener("click", function () {
           mode = button.getAttribute("data-side");
           stagePhoto.classList.remove("is-visible");

@@ -37,6 +37,11 @@ import asyncio
 import cv2
 import numpy as np
 from PIL import Image, ImageOps
+try:
+    import pillow_heif
+    pillow_heif.register_heif_opener()
+except Exception:
+    pass
 from pydantic import BaseModel
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse

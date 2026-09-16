@@ -181,7 +181,22 @@
     });
   }
 
+  function safeGet(key) {
+    try {
+      var s = window.sessionStorage.getItem(key);
+      if (s) return s;
+    } catch (e) {}
+    try {
+      return window.localStorage.getItem(key);
+    } catch (error) {
+      return null;
+    }
+  }
+
   function safeSet(key, value) {
+    try {
+      window.sessionStorage.setItem(key, value);
+    } catch (e) {}
     try {
       window.localStorage.setItem(key, value);
       return true;
@@ -190,12 +205,65 @@
     }
   }
 
-  function safeGet(key) {
-    try {
-      return window.localStorage.getItem(key);
-    } catch (error) {
+  var DB_NAME = "FaceLabDB";
+  var DB_STORE = "photos";
+
+  function getDB() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error("No indexedDB"));
+        return;
+      }
+      var req = window.indexedDB.open(DB_NAME, 1);
+      req.onupgradeneeded = function (e) {
+        var db = e.target.result;
+        if (!db.objectStoreNames.contains(DB_STORE)) {
+          db.createObjectStore(DB_STORE);
+        }
+      };
+      req.onsuccess = function (e) {
+        resolve(e.target.result);
+      };
+      req.onerror = function (e) {
+        reject(e.target.error);
+      };
+    });
+  }
+
+  function dbGet(key) {
+    return getDB().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(DB_STORE, "readonly");
+        var store = tx.objectStore(DB_STORE);
+        var req = store.get(key);
+        req.onsuccess = function () {
+          resolve(req.result || null);
+        };
+        req.onerror = function () {
+          resolve(null);
+        };
+      });
+    }).catch(function () {
       return null;
-    }
+    });
+  }
+
+  function dbSet(key, value) {
+    return getDB().then(function (db) {
+      return new Promise(function (resolve) {
+        var tx = db.transaction(DB_STORE, "readwrite");
+        var store = tx.objectStore(DB_STORE);
+        store.put(value, key);
+        tx.oncomplete = function () {
+          resolve(true);
+        };
+        tx.onerror = function () {
+          resolve(false);
+        };
+      });
+    }).catch(function () {
+      return false;
+    });
   }
 
   /* ------------------------------------------------------------ animations */
@@ -421,20 +489,43 @@
         input.value = "";
         return;
       }
+
+      // Fast preview via object URL
+      if (window.URL && typeof window.URL.createObjectURL === "function") {
+        try {
+          var blobUrl = URL.createObjectURL(file);
+          preview.src = blobUrl;
+          drop.classList.add("has-image");
+        } catch (e) {}
+      }
+
+      if (kind === "front") {
+        state.frontFile = file;
+      } else {
+        state.profileFile = file;
+      }
+
       readFileAsDataUrl(file).then(function (dataUrl) {
-        preview.src = dataUrl;
-        drop.classList.add("has-image");
-        if (kind === "front") {
-          state.frontFile = file;
-          state.frontData = dataUrl;
-        } else {
-          state.profileFile = file;
-          state.profileData = dataUrl;
-        }
-        updateCta();
+        return shrinkDataUrl(dataUrl, 1200, 0.82).then(function (compressed) {
+          var finalData = compressed || dataUrl;
+          preview.src = finalData;
+          drop.classList.add("has-image");
+          if (kind === "front") {
+            state.frontData = finalData;
+            dbSet(STORAGE.front, finalData);
+            safeSet(STORAGE.front, finalData);
+          } else {
+            state.profileData = finalData;
+            dbSet(STORAGE.profile, finalData);
+            safeSet(STORAGE.profile, finalData);
+          }
+          updateCta();
+        });
       }).catch(function (error) {
         console.error("Image load error:", error);
-        toast("Не удалось загрузить фото: " + (error.message || error), true);
+        // Keep file attached even if local dataUrl reading was blocked
+        drop.classList.add("has-image");
+        updateCta();
       });
     });
 
@@ -447,9 +538,13 @@
       if (kind === "front") {
         state.frontFile = null;
         state.frontData = null;
+        safeSet(STORAGE.front, "");
+        dbSet(STORAGE.front, "");
       } else {
         state.profileFile = null;
         state.profileData = null;
+        safeSet(STORAGE.profile, "");
+        dbSet(STORAGE.profile, "");
       }
       updateCta();
     });
@@ -656,37 +751,39 @@
 
     var jobs = [];
     if (state.frontData) {
+      jobs.push(dbSet(STORAGE.front, state.frontData));
       jobs.push(shrinkDataUrl(state.frontData, 720, 0.7).then(function (small) {
         if (!safeSet(STORAGE.front, small)) {
-          return shrinkDataUrl(state.frontData, 460, 0.6).then(function (tiny) {
+          return shrinkDataUrl(state.frontData, 400, 0.55).then(function (tiny) {
             safeSet(STORAGE.front, tiny);
           });
         }
         return null;
-      }));
+      }).catch(function () {}));
     } else {
       try {
+        window.sessionStorage.removeItem(STORAGE.front);
         window.localStorage.removeItem(STORAGE.front);
-      } catch (error) {
-        toast("Локальное хранилище недоступно.", true);
-      }
+        dbSet(STORAGE.front, "");
+      } catch (error) {}
     }
 
     if (state.profileData) {
+      jobs.push(dbSet(STORAGE.profile, state.profileData));
       jobs.push(shrinkDataUrl(state.profileData, 720, 0.7).then(function (small) {
         if (!safeSet(STORAGE.profile, small)) {
-          return shrinkDataUrl(state.profileData, 460, 0.6).then(function (tiny) {
+          return shrinkDataUrl(state.profileData, 400, 0.55).then(function (tiny) {
             safeSet(STORAGE.profile, tiny);
           });
         }
         return null;
-      }));
+      }).catch(function () {}));
     } else {
       try {
+        window.sessionStorage.removeItem(STORAGE.profile);
         window.localStorage.removeItem(STORAGE.profile);
-      } catch (error) {
-        return Promise.all(jobs);
-      }
+        dbSet(STORAGE.profile, "");
+      } catch (error) {}
     }
 
     return Promise.all(jobs);
@@ -757,8 +854,16 @@
     }
 
     var analysisPhoto = $("analysisPhotoStage");
-    if (analysisPhoto && state.frontData) {
-      analysisPhoto.src = state.frontData;
+    var targetPhoto = state.frontData || safeGet(STORAGE.front) || state.profileData || safeGet(STORAGE.profile);
+    if (analysisPhoto && targetPhoto) {
+      analysisPhoto.src = targetPhoto;
+    }
+    if (analysisPhoto && !targetPhoto) {
+      dbGet(STORAGE.front).then(function (dbFront) {
+        if (dbFront && analysisPhoto) {
+          analysisPhoto.src = dbFront;
+        }
+      });
     }
 
     renderHistory();
@@ -1135,12 +1240,55 @@
     }
 
     var meta = $("photoMeta");
-    meta.textContent = profile ? "анфас + профиль" : "только анфас";
+    if (meta) {
+      meta.textContent = profile ? "анфас + профиль" : "только анфас";
+    }
 
     var stagePhoto = $("landmarkPhoto");
-    if (front) {
+    if (stagePhoto && front) {
       stagePhoto.src = front;
       stagePhoto.onload = renderOverlay;
+    }
+
+    var analysisPhoto = $("analysisPhotoStage");
+    if (analysisPhoto) {
+      var isSideActive = $("analysisToggleSide") && $("analysisToggleSide").classList.contains("is-active");
+      var targetPhoto = isSideActive ? (profile || front) : (front || profile);
+      if (targetPhoto) {
+        analysisPhoto.src = targetPhoto;
+      }
+    }
+
+    // Also check IndexedDB asynchronously if front or profile were missing
+    if (!front) {
+      dbGet(STORAGE.front).then(function (dbFront) {
+        if (dbFront) {
+          state.frontData = dbFront;
+          if (frontImg) { frontImg.src = dbFront; if (frontEmpty) frontEmpty.style.display = "none"; }
+          if (stagePhoto && (!stagePhoto.src || stagePhoto.src.indexOf("data:") === -1)) {
+            stagePhoto.src = dbFront;
+            stagePhoto.onload = renderOverlay;
+          }
+          if (analysisPhoto && (!analysisPhoto.src || analysisPhoto.src.indexOf("data:") === -1)) {
+            var isSide = $("analysisToggleSide") && $("analysisToggleSide").classList.contains("is-active");
+            if (!isSide || !state.profileData) analysisPhoto.src = dbFront;
+          }
+        }
+      });
+    }
+
+    if (!profile) {
+      dbGet(STORAGE.profile).then(function (dbProfile) {
+        if (dbProfile) {
+          state.profileData = dbProfile;
+          if (profileImg) { profileImg.src = dbProfile; if (profileEmpty) profileEmpty.style.display = "none"; }
+          if (meta) meta.textContent = "анфас + профиль";
+          if (analysisPhoto) {
+            var isSide = $("analysisToggleSide") && $("analysisToggleSide").classList.contains("is-active");
+            if (isSide) analysisPhoto.src = dbProfile;
+          }
+        }
+      });
     }
   }
 
@@ -2295,18 +2443,30 @@
 
     var photoImg = $("modalRatioPhoto");
     var canvas = $("modalRatioCanvas");
+    var hasProfile = !!(state.profileData || safeGet(STORAGE.profile));
     var isProfileMetric = metric.source === "profile" ||
       metric.key === "ramus_ratio" ||
       metric.key === "chin_projection" ||
-      (metric.key === "gonial_angle" && !!state.profileData);
-    var isProfile = isProfileMetric && !!state.profileData;
-    var photoSrc = isProfile ? state.profileData : state.frontData;
+      (metric.key === "gonial_angle" && hasProfile);
+    var isProfile = isProfileMetric && hasProfile;
+    var photoSrc = isProfile
+      ? (state.profileData || safeGet(STORAGE.profile) || state.frontData || safeGet(STORAGE.front))
+      : (state.frontData || safeGet(STORAGE.front) || state.profileData || safeGet(STORAGE.profile));
 
     photoImg.src = photoSrc || "";
+    if (!photoSrc) {
+      var storeKey = isProfile ? STORAGE.profile : STORAGE.front;
+      dbGet(storeKey).then(function (dbPhoto) {
+        if (dbPhoto && photoImg) {
+          photoImg.src = dbPhoto;
+          drawModalOverlay(canvas, photoImg, metric, state.analysis.landmarks, modalState.overlayVisible, isProfile);
+        }
+      });
+    }
     photoImg.onload = function () {
       drawModalOverlay(canvas, photoImg, metric, state.analysis.landmarks, modalState.overlayVisible, isProfile);
     };
-    if (photoImg.complete) {
+    if (photoImg.complete && photoImg.naturalWidth) {
       drawModalOverlay(canvas, photoImg, metric, state.analysis.landmarks, modalState.overlayVisible, isProfile);
     }
 
@@ -3082,6 +3242,21 @@
       state.ethnicity = parsed.ethnicity;
       state.frontData = safeGet(STORAGE.front);
       state.profileData = safeGet(STORAGE.profile);
+
+      // Async recovery from IndexedDB if localStorage / sessionStorage was incomplete
+      dbGet(STORAGE.front).then(function (dbFront) {
+        if (dbFront) {
+          state.frontData = dbFront;
+          renderPhotos();
+        }
+      });
+      dbGet(STORAGE.profile).then(function (dbProfile) {
+        if (dbProfile) {
+          state.profileData = dbProfile;
+          renderPhotos();
+        }
+      });
+
       return true;
     } catch (error) {
       return false;
@@ -3309,8 +3484,15 @@
         toggleFront.classList.add("is-active");
         toggleSide.classList.remove("is-active");
         var photoStage = $("analysisPhotoStage");
-        if (photoStage && state.frontData) {
-          photoStage.src = state.frontData;
+        var frontSrc = state.frontData || safeGet(STORAGE.front);
+        if (photoStage) {
+          if (frontSrc) {
+            photoStage.src = frontSrc;
+          } else {
+            dbGet(STORAGE.front).then(function (dbFront) {
+              if (dbFront && photoStage) photoStage.src = dbFront;
+            });
+          }
         }
         var cat = catByKey(currentAnalysisCat) || catByKey("harmony");
         var tagEl = $("analysisPhotoTag");
@@ -3331,8 +3513,21 @@
         toggleSide.classList.add("is-active");
         toggleFront.classList.remove("is-active");
         var photoStage = $("analysisPhotoStage");
+        var sideSrc = state.profileData || safeGet(STORAGE.profile) || state.frontData || safeGet(STORAGE.front) || "";
         if (photoStage) {
-          photoStage.src = state.profileData || state.frontData || "";
+          if (sideSrc) {
+            photoStage.src = sideSrc;
+          } else {
+            dbGet(STORAGE.profile).then(function (dbProfile) {
+              if (dbProfile && photoStage) {
+                photoStage.src = dbProfile;
+              } else {
+                dbGet(STORAGE.front).then(function (dbFront) {
+                  if (dbFront && photoStage) photoStage.src = dbFront;
+                });
+              }
+            });
+          }
         }
         var cat = catByKey(currentAnalysisCat) || catByKey("angularity");
         var tagEl = $("analysisPhotoTag");
