@@ -63,7 +63,7 @@ MODEL_URL = (
 
 MAX_UPLOAD_BYTES = 18 * 1024 * 1024
 MAX_WORK_SIZE = 1400          # longest side used for landmark detection
-EDGE_SCORE = 6.2              # strict Looksmaxxing score at the edge of an ideal band (was 8.7)
+EDGE_SCORE = 7.8              # Calibrated score at the edge of the ideal band (7.80 = High Tier)
 
 # Set FACE_LAB_PAYWALL=1 to require Telegram auth & payment (defaults to 0 for open evaluation).
 PAYWALL_REQUIRED = os.environ.get("FACE_LAB_PAYWALL", "0") == "1"
@@ -164,7 +164,7 @@ STANDARDS: Dict[Tuple[str, str], Dict[str, Tuple[float, float]]] = {
         "jaw_cheek_ratio": (0.55, 0.80),
         "eye_separation": (38.0, 47.0),
         "mouth_nose_ratio": (1.25, 1.60),
-        "lower_third": (33.0, 42.0),
+        "lower_third": (34.0, 40.5),
     },
     ("female", "caucasian"): {
         "canthal_tilt": (3.5, 9.0),
@@ -172,7 +172,7 @@ STANDARDS: Dict[Tuple[str, str], Dict[str, Tuple[float, float]]] = {
         "jaw_cheek_ratio": (0.50, 0.75),
         "eye_separation": (38.5, 47.5),
         "mouth_nose_ratio": (1.28, 1.62),
-        "lower_third": (32.0, 41.0),
+        "lower_third": (31.0, 36.5),
     },
     ("male", "asian"): {
         "canthal_tilt": (3.5, 9.0),
@@ -180,7 +180,7 @@ STANDARDS: Dict[Tuple[str, str], Dict[str, Tuple[float, float]]] = {
         "jaw_cheek_ratio": (0.58, 0.82),
         "eye_separation": (38.5, 47.5),
         "mouth_nose_ratio": (1.25, 1.58),
-        "lower_third": (32.0, 41.5),
+        "lower_third": (33.5, 40.0),
     },
     ("female", "asian"): {
         "canthal_tilt": (5.0, 10.5),
@@ -188,7 +188,7 @@ STANDARDS: Dict[Tuple[str, str], Dict[str, Tuple[float, float]]] = {
         "jaw_cheek_ratio": (0.52, 0.77),
         "eye_separation": (39.0, 48.0),
         "mouth_nose_ratio": (1.28, 1.62),
-        "lower_third": (31.5, 41.0),
+        "lower_third": (30.5, 36.0),
     },
     ("male", "african"): {
         "canthal_tilt": (3.0, 8.0),
@@ -196,7 +196,7 @@ STANDARDS: Dict[Tuple[str, str], Dict[str, Tuple[float, float]]] = {
         "jaw_cheek_ratio": (0.58, 0.83),
         "eye_separation": (38.0, 47.0),
         "mouth_nose_ratio": (1.22, 1.55),
-        "lower_third": (33.0, 42.5),
+        "lower_third": (34.0, 41.0),
     },
     ("female", "african"): {
         "canthal_tilt": (4.5, 9.5),
@@ -204,7 +204,7 @@ STANDARDS: Dict[Tuple[str, str], Dict[str, Tuple[float, float]]] = {
         "jaw_cheek_ratio": (0.53, 0.78),
         "eye_separation": (38.5, 47.5),
         "mouth_nose_ratio": (1.25, 1.58),
-        "lower_third": (32.5, 42.0),
+        "lower_third": (31.5, 37.0),
     },
     ("male", "middle_eastern"): {
         "canthal_tilt": (2.0, 8.0),
@@ -212,7 +212,7 @@ STANDARDS: Dict[Tuple[str, str], Dict[str, Tuple[float, float]]] = {
         "jaw_cheek_ratio": (0.56, 0.81),
         "eye_separation": (38.0, 47.0),
         "mouth_nose_ratio": (1.25, 1.60),
-        "lower_third": (32.5, 42.0),
+        "lower_third": (34.0, 40.5),
     },
     ("female", "middle_eastern"): {
         "canthal_tilt": (3.5, 9.0),
@@ -220,69 +220,75 @@ STANDARDS: Dict[Tuple[str, str], Dict[str, Tuple[float, float]]] = {
         "jaw_cheek_ratio": (0.51, 0.76),
         "eye_separation": (38.5, 47.5),
         "mouth_nose_ratio": (1.28, 1.62),
-        "lower_third": (32.0, 41.5),
+        "lower_third": (31.0, 36.5),
     },
 }
 
 # Bands that do not vary by ethnicity in this model.
 GENERIC_BANDS: Dict[str, Tuple[float, float]] = {
-    "facial_thirds_balance": (60.0, 98.0),
+    "facial_thirds_balance": (82.0, 100.0),
     "vertical_symmetry": (92.0, 100.0),
     "horizontal_symmetry": (92.0, 100.0),
-    "golden_ratio": (1.32, 1.65),
-    "midface_ratio": (0.44, 0.56),
-    "cheekbone_prominence": (1.08, 1.30),
-    "jaw_frontal_angle": (70.0, 110.0),
-    "chin_width_ratio": (0.22, 0.42),
-    "mandible_definition": (1.20, 1.62),
-    "ramus_ratio": (0.40, 0.80),
-    "bigonial_width": (0.45, 0.68),
-    "chin_projection": (162.0, 174.0),
-    "jaw_mass": (0.30, 0.40),
-    "eye_aperture": (0.30, 0.38),
-    "face_length_ratio": (1.20, 1.55),
-    "cheek_fullness": (0.20, 0.30),
-    "brow_tilt": (4.0, 12.0),
-    "dimorphism_index": (55.0, 100.0),
-    "eye_size": (0.215, 0.255),
-    "nose_width": (0.245, 0.290),
-    "lip_width": (0.360, 0.420),
-    "nose_length": (0.400, 0.460),
-    "nasal_index": (0.60, 0.72),
+    "golden_ratio": (1.35, 1.65),
+    "midface_ratio": (0.45, 0.55),
+    "cheekbone_prominence": (1.12, 1.26),
+    "jaw_frontal_angle": (76.0, 96.0),
+    "chin_width_ratio": (0.26, 0.44),
+    "mandible_definition": (1.22, 1.65),
+    "ramus_ratio": (0.48, 0.78),
+    "bigonial_width": (0.50, 0.66),
+    "chin_projection": (164.0, 175.0),
+    "jaw_mass": (0.28, 0.42),
+    "eye_aperture": (0.28, 0.38),
+    "face_length_ratio": (1.25, 1.54),
+    "cheek_fullness": (0.18, 0.30),
+    "brow_tilt": (3.0, 12.0),
+    "dimorphism_index": (60.0, 100.0),
+    "eye_size": (0.215, 0.258),
+    "nose_width": (0.240, 0.290),
+    "lip_width": (0.360, 0.430),
+    "nose_length": (0.380, 0.460),
+    "nasal_index": (0.60, 0.76),
     "philtrum_length": (0.055, 0.085),
-    "upper_lip_ratio": (0.62, 0.85),
-    "eye_spacing_symmetry": (94.0, 100.0),
+    "upper_lip_ratio": (0.60, 0.82),
+    "eye_spacing_symmetry": (95.0, 100.0),
     "nose_height_ratio": (0.30, 0.38),
-    "interocular_ratio": (0.85, 1.25),
-    "mouth_width_ratio": (1.42, 1.62),
-    "chin_height_ratio": (0.48, 0.60),
+    "interocular_ratio": (0.88, 1.18),
+    "mouth_width_ratio": (1.38, 1.60),
+    "chin_height_ratio": (0.48, 0.62),
 }
 
 # Per-gender overrides applied on top of GENERIC_BANDS.
 GENDER_BAND_OVERRIDES: Dict[str, Dict[str, Tuple[float, float]]] = {
     "male": {
-        "brow_ridge": (0.052, 0.082),
-        "lip_thickness": (0.30, 0.40),
-        "jaw_mass": (0.25, 0.45),
-        "eye_aperture": (0.28, 0.35),
-        "cheek_fullness": (0.18, 0.27),
-        "brow_tilt": (2.0, 9.0),
-        "eye_size": (0.210, 0.248),
-        "upper_lip_ratio": (0.60, 0.82),
-        "chin_height_ratio": (0.50, 0.64),
-        "lower_third": (33.5, 42.0),
+        "brow_ridge": (0.040, 0.068),
+        "lip_thickness": (0.28, 0.38),
+        "jaw_mass": (0.30, 0.44),
+        "eye_aperture": (0.27, 0.35),
+        "cheek_fullness": (0.17, 0.26),
+        "brow_tilt": (2.0, 8.5),
+        "eye_size": (0.210, 0.250),
+        "upper_lip_ratio": (0.58, 0.78),
+        "chin_height_ratio": (0.52, 0.64),
+        "lower_third": (34.0, 40.5),
+        "jaw_frontal_angle": (80.0, 96.0),
+        "jaw_cheek_ratio": (0.78, 0.88),
+        "chin_width_ratio": (0.32, 0.45),
     },
     "female": {
-        "brow_ridge": (0.030, 0.058),
+        "brow_ridge": (0.055, 0.088),
         "lip_thickness": (0.36, 0.48),
-        "jaw_mass": (0.20, 0.40),
-        "eye_aperture": (0.32, 0.40),
-        "cheek_fullness": (0.23, 0.33),
+        "jaw_mass": (0.22, 0.36),
+        "eye_aperture": (0.31, 0.40),
+        "cheek_fullness": (0.22, 0.33),
         "brow_tilt": (6.0, 14.0),
-        "eye_size": (0.222, 0.262),
-        "upper_lip_ratio": (0.66, 0.88),
-        "chin_height_ratio": (0.44, 0.56),
-        "lower_third": (30.5, 38.0),
+        "eye_size": (0.222, 0.265),
+        "upper_lip_ratio": (0.64, 0.84),
+        "chin_height_ratio": (0.46, 0.56),
+        "lower_third": (31.0, 36.5),
+        "jaw_frontal_angle": (74.0, 88.0),
+        "jaw_cheek_ratio": (0.70, 0.80),
+        "chin_width_ratio": (0.25, 0.36),
     },
 }
 
@@ -613,73 +619,67 @@ _JAWLINE_LEFT = [152, 148, 176, 149, 150, 136, 172, 132]
 _JAWLINE_RIGHT = [152, 377, 400, 378, 379, 365, 397, 288]
 
 
-def jaw_contour_analysis(pts: List[Tuple[float, float]]) -> Dict[str, Any]:
-    """Walk the face oval jawline and extract key jaw measurements dynamically.
+def jaw_contour_analysis(pts: Sequence[Sequence[float]]) -> Dict[str, Any]:
+    """Derive mandibular measurements using true anatomical landmarks."""
+    face_w = dist(pts[LM_ZYGO_L], pts[LM_ZYGO_R])
 
-    Returns a dict with:
-      jaw_width   – widest distance between symmetric jawline points
-      chin_width  – narrowest distance near the chin
-      gonion_y    – y-coordinate of the jaw angle (widest jaw level)
-      gonion_left – coordinates of the left jaw angle point
-      gonion_right – coordinates of the right jaw angle point
-      ramus_height – vertical distance from gonion to chin
-      jaw_body_len – direct distance from gonion to chin
+    gonion_l = pts[132] if len(pts) > 132 else pts[LM_JAW_L_MID]
+    gonion_r = pts[288] if len(pts) > 288 else pts[LM_JAW_R_MID]
+    jaw_width = dist(gonion_l, gonion_r)
+
+    if len(pts) > 378:
+        chin_width = dist(pts[149], pts[378])
+    elif len(pts) > 377:
+        chin_width = dist(pts[148], pts[377])
+    else:
+        chin_width = jaw_width * 0.35
+
+    chin_pt = pts[LM_MENTON]
+    temple_y = (pts[LM_TEMPLE_L][1] + pts[LM_TEMPLE_R][1]) / 2.0
+    gonion_y = (gonion_l[1] + gonion_r[1]) / 2.0
+    ramus_height = max(abs(gonion_y - temple_y), face_w * 0.25)
+
+    jaw_body_l = dist(gonion_l, chin_pt)
+    jaw_body_r = dist(gonion_r, chin_pt)
+    jaw_body_len = max((jaw_body_l + jaw_body_r) / 2.0, 1.0)
+
+    return {
+        "jaw_width": jaw_width,
+        "chin_width": chin_width,
+        "gonion_y": gonion_y,
+        "gonion_left": gonion_l,
+        "gonion_right": gonion_r,
+        "ramus_height": ramus_height,
+        "jaw_body_len": jaw_body_len,
+    }
+
+
+def compute_chin_projection(pts: Sequence[Sequence[float]]) -> float:
+    """3D cephalometric facial convexity angle: Glabella (9) - Subnasale (2) - Pogonion (199).
+
+    Returns convexity angle in degrees (orthognathic norm: 165° - 174°).
     """
-    try:
-        # Pair widths at each jawline level (skip index 0 = chin itself)
-        pair_widths: List[Tuple[float, int]] = []
-        for i in range(1, min(len(_JAWLINE_LEFT), len(_JAWLINE_RIGHT))):
-            if _JAWLINE_LEFT[i] < len(pts) and _JAWLINE_RIGHT[i] < len(pts):
-                l_pt = pts[_JAWLINE_LEFT[i]]
-                r_pt = pts[_JAWLINE_RIGHT[i]]
-                pair_widths.append((dist(l_pt, r_pt), i))
+    g = pts[LM_GLABELLA]
+    s = pts[LM_SUBNASALE]
+    p = pts[199] if len(pts) > 199 else pts[LM_MENTON]
 
-        # Jaw width = max width in the jaw region (indices 1-7, excluding cheekbone area)
-        jaw_pairs = [pw for pw in pair_widths if pw[1] <= 7]
-        if not jaw_pairs:
-            jaw_pairs = pair_widths
-        if jaw_pairs:
-            jaw_width, gonion_level = max(jaw_pairs, key=lambda x: x[0])
-        else:
-            jaw_width, gonion_level = dist(pts[LM_ZYGO_L], pts[LM_ZYGO_R]) * 0.82, 4
+    if len(g) > 2 and len(s) > 2 and len(p) > 2 and (abs(g[2]) > 1e-4 or abs(s[2]) > 1e-4):
+        v1 = (g[1] - s[1], g[2] - s[2])
+        v2 = (p[1] - s[1], p[2] - s[2])
+        mag1 = math.hypot(*v1)
+        mag2 = math.hypot(*v2)
+        if mag1 > 1e-6 and mag2 > 1e-6:
+            dot = v1[0] * v2[0] + v1[1] * v2[1]
+            cos_val = max(-1.0, min(1.0, dot / (mag1 * mag2)))
+            angle = math.degrees(math.acos(cos_val))
+            if 145.0 <= angle <= 180.0:
+                return round(clamp(angle, 158.0, 178.0), 1)
 
-        # Chin width = narrowest among the 3 closest points to chin
-        chin_pairs = pair_widths[:3]
-        chin_width = min(pw[0] for pw in chin_pairs) if chin_pairs else jaw_width * 0.35
-
-        gonion_l = pts[_JAWLINE_LEFT[gonion_level]] if gonion_level < len(_JAWLINE_LEFT) else pts[LM_JAW_L_MID]
-        gonion_r = pts[_JAWLINE_RIGHT[gonion_level]] if gonion_level < len(_JAWLINE_RIGHT) else pts[LM_JAW_R_MID]
-        chin_pt = pts[152] if len(pts) > 152 else pts[LM_MENTON]
-
-        gonion_y = (gonion_l[1] + gonion_r[1]) / 2.0
-        chin_y = chin_pt[1]
-
-        ramus_height = abs(gonion_y - chin_y)
-        gonion_center = ((gonion_l[0] + gonion_r[0]) / 2.0, gonion_y)
-        jaw_body_len = dist(gonion_center, chin_pt)
-
-        return {
-            "jaw_width": jaw_width,
-            "chin_width": chin_width,
-            "gonion_y": gonion_y,
-            "gonion_left": gonion_l,
-            "gonion_right": gonion_r,
-            "gonion_level": gonion_level,
-            "ramus_height": ramus_height,
-            "jaw_body_len": jaw_body_len,
-        }
-    except Exception:
-        face_w = dist(pts[LM_ZYGO_L], pts[LM_ZYGO_R])
-        return {
-            "jaw_width": face_w * 0.82,
-            "chin_width": face_w * 0.28,
-            "gonion_y": (pts[LM_JAW_L_MID][1] + pts[LM_JAW_R_MID][1]) / 2.0,
-            "gonion_left": pts[LM_JAW_L_MID],
-            "gonion_right": pts[LM_JAW_R_MID],
-            "gonion_level": 4,
-            "ramus_height": face_w * 0.45,
-            "jaw_body_len": face_w * 0.55,
-        }
+    lower_h = abs(pts[LM_MENTON][1] - pts[LM_SUBNASALE][1])
+    face_h = abs(pts[LM_MENTON][1] - pts[LM_TRICHION][1])
+    ratio = safe_div(lower_h, face_h, 0.35)
+    angle = 168.0 + (ratio - 0.35) * 18.0
+    return round(clamp(angle, 162.0, 175.0), 1)
 
 
 # ---------------------------------------------------------------------------
@@ -808,7 +808,7 @@ def detect_landmarks(image_bgr: np.ndarray) -> Tuple[List[Tuple[float, float]], 
         )
 
     height, width = image_bgr.shape[:2]
-    points = [(lm.x * width, lm.y * height) for lm in result.face_landmarks[0]]
+    points = [(lm.x * width, lm.y * height, lm.z * width) for lm in result.face_landmarks[0]]
     shapes: Dict[str, float] = {}
     categories = getattr(result, "face_blendshapes", None)
     if categories:
@@ -817,12 +817,49 @@ def detect_landmarks(image_bgr: np.ndarray) -> Tuple[List[Tuple[float, float]], 
     return points, shapes
 
 
+def align_landmarks(pts: Sequence[Sequence[float]]) -> Tuple[List[Tuple[float, float, float]], float]:
+    """Rotate facial landmarks so the inter-pupillary line is strictly horizontal.
+
+    Preserves z coordinates and normalizes x, y to the canonical upright facial frame.
+    Returns (aligned_points, roll_angle_degrees).
+    """
+    if len(pts) > 473:
+        eye_l = pts[468]
+        eye_r = pts[473]
+    else:
+        eye_l = midpoint(pts[LM_EYE_L_OUTER], pts[LM_EYE_L_INNER])
+        eye_r = midpoint(pts[LM_EYE_R_OUTER], pts[LM_EYE_R_INNER])
+
+    dx = eye_r[0] - eye_l[0]
+    dy = eye_r[1] - eye_l[1]
+    roll_rad = math.atan2(dy, dx)
+    roll_deg = math.degrees(roll_rad)
+
+    cx = (eye_l[0] + eye_r[0]) / 2.0
+    cy = (eye_l[1] + eye_r[1]) / 2.0
+
+    cos_a = math.cos(-roll_rad)
+    sin_a = math.sin(-roll_rad)
+
+    aligned: List[Tuple[float, float, float]] = []
+    for p in pts:
+        tx = p[0] - cx
+        ty = p[1] - cy
+        rx = tx * cos_a - ty * sin_a + cx
+        ry = tx * sin_a + ty * cos_a + cy
+        rz = p[2] if len(p) > 2 else 0.0
+        aligned.append((rx, ry, rz))
+
+    return aligned, roll_deg
+
+
 # ---------------------------------------------------------------------------
 # Frontal geometry metrics
 # ---------------------------------------------------------------------------
 
-def frontal_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
-    """Compute every landmark-derived measurement from the frontal photo."""
+def frontal_metrics(pts: Sequence[Sequence[float]],
+                    raw_pts: Optional[Sequence[Sequence[float]]] = None) -> Dict[str, float]:
+    """Compute every landmark-derived measurement in the canonically aligned upright facial frame."""
     out: Dict[str, float] = {}
 
     face_width = dist(pts[LM_ZYGO_L], pts[LM_ZYGO_R])
@@ -840,119 +877,109 @@ def frontal_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     trichion_y = pts[LM_TRICHION][1]
     menton_y = pts[LM_MENTON][1]
 
-    # --- canthal tilt, averaged over both eyes ---
+    # --- canthal tilt, measured relative to the horizontal facial axis ---
     tilt_left = line_tilt_deg(pts[LM_EYE_L_INNER], pts[LM_EYE_L_OUTER])
     tilt_right = line_tilt_deg(pts[LM_EYE_R_INNER], pts[LM_EYE_R_OUTER])
-    out["canthal_tilt"] = (tilt_left + tilt_right) / 2.0
+    out["canthal_tilt"] = round((tilt_left + tilt_right) / 2.0, 2)
 
-    # --- facial thirds as percentages of total face height ---
-    top = max(brow_line_y - trichion_y, 1e-6)
-    middle = max(subnasale_y - brow_line_y, 1e-6)
-    lower = max(menton_y - subnasale_y, 1e-6)
+    # --- facial thirds along the vertical facial axis ---
+    top = max(brow_line_y - trichion_y, 1.0)
+    middle = max(subnasale_y - brow_line_y, 1.0)
+    lower = max(menton_y - subnasale_y, 1.0)
     total = top + middle + lower
-    out["lower_third"] = 100.0 * lower / total
+    out["lower_third"] = round(100.0 * lower / total, 2)
 
-    thirds = (100.0 * top / total, 100.0 * middle / total, out["lower_third"])
-    spread = max(thirds) - min(thirds)
-    out["facial_thirds_balance"] = clamp(100.0 - spread * 1.5, 60.0, 100.0)
+    top_pct = 100.0 * top / total
+    mid_pct = 100.0 * middle / total
+    low_pct = out["lower_third"]
+    max_dev = max(abs(top_pct - 33.333), abs(mid_pct - 33.333), abs(low_pct - 33.333))
+    out["facial_thirds_balance"] = round(clamp(100.0 - max_dev * 3.2, 60.0, 100.0), 1)
 
-    out["eye_separation"] = 100.0 * safe_div(pupil_distance, face_width, 0.45)
-    out["mouth_nose_ratio"] = safe_div(dist(pts[LM_MOUTH_L], pts[LM_MOUTH_R]),
-                                      dist(pts[LM_ALA_L], pts[LM_ALA_R]), 1.5)
+    out["eye_separation"] = round(100.0 * safe_div(pupil_distance, face_width, 0.44), 2)
+    mouth_w = dist(pts[LM_MOUTH_L], pts[LM_MOUTH_R])
+    nose_w = dist(pts[LM_ALA_L], pts[LM_ALA_R])
+    out["mouth_nose_ratio"] = round(safe_div(mouth_w, nose_w, 1.5), 3)
 
-    # --- symmetry ---
-    axis_top = midpoint(pts[LM_TRICHION], pts[LM_GLABELLA])
-    axis_bottom = pts[LM_MENTON]
-    out["vertical_symmetry"] = vertical_symmetry_pct(pts, axis_top, axis_bottom, face_width)
-    out["horizontal_symmetry"] = horizontal_symmetry_pct(pts, axis_top, axis_bottom, face_height)
+    # --- symmetry in the upright frame ---
+    cx = (eye_l_center[0] + eye_r_center[0]) / 2.0
+    out["vertical_symmetry"] = vertical_symmetry_pct(pts, cx, face_width)
+    out["horizontal_symmetry"] = horizontal_symmetry_pct(pts, face_height)
 
-    face_height_total = dist(pts[LM_TRICHION], pts[LM_MENTON])
-    out["golden_ratio"] = safe_div(face_height_total * 1.15, face_width, 1.618)
-    out["face_length_ratio"] = safe_div(face_height_total, face_width, 1.42)
+    out["golden_ratio"] = round(safe_div(face_height * 1.12, face_width, 1.618), 3)
+    out["face_length_ratio"] = round(safe_div(face_height, face_width, 1.40), 3)
     eye_line_y = (eye_l_center[1] + eye_r_center[1]) / 2.0
     stomion_y = (pts[LM_UPPER_LIP_INNER][1] + pts[LM_LOWER_LIP_INNER][1]) / 2.0
-    out["midface_ratio"] = safe_div(abs(stomion_y - eye_line_y), face_width, 0.50)
+    out["midface_ratio"] = round(safe_div(abs(stomion_y - eye_line_y), face_width, 0.50), 3)
 
     eye_len_l = dist(pts[LM_EYE_L_OUTER], pts[LM_EYE_L_INNER])
     eye_len_r = dist(pts[LM_EYE_R_OUTER], pts[LM_EYE_R_INNER])
     eye_len = (eye_len_l + eye_len_r) / 2.0
     inner_gap = dist(pts[LM_EYE_L_INNER], pts[LM_EYE_R_INNER])
-    out["interocular_ratio"] = safe_div(inner_gap, eye_len, 1.05)
+    out["interocular_ratio"] = round(safe_div(inner_gap, eye_len, 1.0), 3)
 
-    ax, ay = axis_top
-    bx, by = axis_bottom
-    dx, dy = bx - ax, by - ay
-    norm = math.hypot(dx, dy)
-    if norm < 1e-9:
-        left_offset = abs(eye_l_center[0] - ax)
-        right_offset = abs(eye_r_center[0] - ax)
-    else:
-        left_offset = abs((eye_l_center[0] - ax) * dy - (eye_l_center[1] - ay) * dx) / norm
-        right_offset = abs((eye_r_center[0] - ax) * dy - (eye_r_center[1] - ay) * dx) / norm
-    balance = safe_div(min(left_offset, right_offset), max(left_offset, right_offset), 1.0)
-    out["eye_spacing_symmetry"] = clamp(100.0 * balance, 0.0, 100.0)
+    d_l = abs(eye_l_center[0] - cx)
+    d_r = abs(eye_r_center[0] - cx)
+    out["eye_spacing_symmetry"] = round(clamp(100.0 * min(d_l, d_r) / max(d_l, d_r, 1e-6), 0.0, 100.0), 1)
 
-    # --- angularity (dynamic jaw contour analysis) ---
+    # --- angularity (jaw contour analysis) ---
     jaw = jaw_contour_analysis(pts)
 
     gonial_l = angle_deg(pts[LM_TEMPLE_L], jaw["gonion_left"], pts[LM_MENTON])
     gonial_r = angle_deg(pts[LM_TEMPLE_R], jaw["gonion_right"], pts[LM_MENTON])
-    out["gonial_angle"] = (gonial_l + gonial_r) / 2.0
+    out["gonial_angle"] = round((gonial_l + gonial_r) / 2.0, 1)
 
-    out["cheekbone_prominence"] = safe_div(face_width, temple_width, 1.2)
-    out["jaw_cheek_ratio"] = safe_div(jaw["jaw_width"], face_width, 0.8)
+    out["cheekbone_prominence"] = round(safe_div(face_width, temple_width, 1.18), 3)
+    out["jaw_cheek_ratio"] = round(safe_div(jaw["jaw_width"], face_width, 0.80), 3)
 
-    out["jaw_frontal_angle"] = angle_deg(jaw["gonion_left"], pts[LM_MENTON], jaw["gonion_right"])
+    out["jaw_frontal_angle"] = round(angle_deg(jaw["gonion_left"], pts[LM_MENTON], jaw["gonion_right"]), 1)
 
-    out["chin_width_ratio"] = safe_div(jaw["chin_width"], max(jaw["jaw_width"], 1e-6), 0.28)
+    out["chin_width_ratio"] = round(safe_div(jaw["chin_width"], max(jaw["jaw_width"], 1e-6), 0.35), 3)
 
-    normalised_gonial = clamp((136.0 - out["gonial_angle"]) / 26.0, 0.0, 1.0)
-    out["mandible_definition"] = 1.0 + normalised_gonial * 0.9 * out["jaw_cheek_ratio"]
+    norm_gonial = clamp((135.0 - out["gonial_angle"]) / 22.0, 0.0, 1.0)
+    out["mandible_definition"] = round(1.0 + norm_gonial * 0.55 + (out["jaw_cheek_ratio"] - 0.70) * 1.2, 3)
 
-    out["ramus_ratio"] = safe_div(jaw["ramus_height"], max(jaw["jaw_body_len"], 1e-6), 0.7)
-    out["bigonial_width"] = safe_div(jaw["jaw_width"], face_height, 0.6)
-    out["jaw_mass"] = safe_div(lower * jaw["jaw_width"], face_height * face_width, 0.35) * 1.55
+    out["ramus_ratio"] = round(safe_div(jaw["ramus_height"], max(jaw["jaw_body_len"], 1e-6), 0.65), 3)
+    out["bigonial_width"] = round(safe_div(jaw["jaw_width"], face_height, 0.58), 3)
+    jaw_tri_area = 0.5 * jaw["jaw_width"] * lower
+    face_box_area = face_width * face_height
+    out["jaw_mass"] = round(safe_div(jaw_tri_area * 2.2, face_box_area, 0.35), 3)
 
-    # Chin projection: facial convexity / profile projection estimate (162°-174° norm)
-    lower_ratio = safe_div(lower, face_height, 0.35)
-    chin_angle = 168.0 + clamp((lower_ratio - 0.35) * 32.0 + (out["jaw_cheek_ratio"] - 0.78) * 8.0, -5.0, 4.0)
-    out["chin_projection"] = round(clamp(chin_angle, 160.0, 175.0), 1)
+    out["chin_projection"] = compute_chin_projection(pts)
 
     # --- dimorphism ---
-    brow_gap_l = abs(pts[LM_BROW_L_TOP][1] - pts[LM_EYE_L_TOP][1])
-    brow_gap_r = abs(pts[LM_BROW_R_TOP][1] - pts[LM_EYE_R_TOP][1])
-    out["brow_ridge"] = safe_div((brow_gap_l + brow_gap_r) / 2.0, face_height, 0.05)
+    gap_l = abs(pts[LM_BROW_L_INNER][1] - pts[LM_EYE_L_TOP][1])
+    gap_r = abs(pts[LM_BROW_R_INNER][1] - pts[LM_EYE_R_TOP][1])
+    out["brow_ridge"] = round(safe_div((gap_l + gap_r) / 2.0, face_height, 0.05), 3)
 
-    upper_lip = abs(pts[LM_UPPER_LIP_OUTER][1] - pts[LM_UPPER_LIP_INNER][1])
-    lower_lip = abs(pts[LM_LOWER_LIP_OUTER][1] - pts[LM_LOWER_LIP_INNER][1])
-    mouth_width = dist(pts[LM_MOUTH_L], pts[LM_MOUTH_R])
-    out["lip_thickness"] = safe_div(upper_lip + lower_lip, mouth_width, 0.36)
-    out["upper_lip_ratio"] = safe_div(upper_lip, max(lower_lip, 1e-6), 0.72)
+    up_lip = abs(pts[LM_UPPER_LIP_OUTER][1] - pts[LM_UPPER_LIP_INNER][1])
+    lo_lip = abs(pts[LM_LOWER_LIP_OUTER][1] - pts[LM_LOWER_LIP_INNER][1])
+    out["lip_thickness"] = round(safe_div(up_lip + lo_lip, mouth_w, 0.36), 3)
+    out["upper_lip_ratio"] = round(safe_div(up_lip, max(lo_lip, 1e-6), 0.70), 3)
 
     tilt_brow_l = line_tilt_deg(pts[LM_BROW_L_INNER], pts[LM_BROW_L_OUTER])
     tilt_brow_r = line_tilt_deg(pts[LM_BROW_R_INNER], pts[LM_BROW_R_OUTER])
-    out["brow_tilt"] = (tilt_brow_l + tilt_brow_r) / 2.0
+    out["brow_tilt"] = round((tilt_brow_l + tilt_brow_r) / 2.0, 1)
 
-    aperture_l = safe_div(dist(pts[LM_EYE_L_TOP], pts[LM_EYE_L_BOTTOM]), max(eye_len_l, 1e-6), 0.33)
-    aperture_r = safe_div(dist(pts[LM_EYE_R_TOP], pts[LM_EYE_R_BOTTOM]), max(eye_len_r, 1e-6), 0.33)
-    out["eye_aperture"] = (aperture_l + aperture_r) / 2.0
+    h_l = dist(pts[LM_EYE_L_TOP], pts[LM_EYE_L_BOTTOM])
+    h_r = dist(pts[LM_EYE_R_TOP], pts[LM_EYE_R_BOTTOM])
+    out["eye_aperture"] = round((safe_div(h_l, eye_len_l, 0.33) + safe_div(h_r, eye_len_r, 0.33)) / 2.0, 3)
 
     cheek_span = dist(pts[LM_CHEEK_L], pts[LM_CHEEK_R])
-    out["cheek_fullness"] = safe_div(face_width - cheek_span, face_width, 0.25) * 1.1
-    out["chin_height_ratio"] = safe_div(abs(menton_y - pts[LM_LOWER_LIP_OUTER][1]), lower, 0.3)
+    out["cheek_fullness"] = round(safe_div(face_width - cheek_span, face_width, 0.22), 3)
+    chin_h = abs(menton_y - pts[LM_LOWER_LIP_OUTER][1])
+    out["chin_height_ratio"] = round(safe_div(chin_h, lower, 0.55), 3)
 
     # --- features ---
-    out["eye_size"] = safe_div(eye_len, face_width, 0.23)
-    nose_width_px = dist(pts[LM_ALA_L], pts[LM_ALA_R])
-    out["nose_width"] = safe_div(nose_width_px, face_width, 0.26)
-    out["lip_width"] = safe_div(mouth_width, face_width, 0.39)
-    nose_length_px = dist(pts[LM_NASION], pts[LM_SUBNASALE])
-    out["nose_length"] = safe_div(nose_length_px, face_width, 0.43)
-    out["nasal_index"] = safe_div(nose_width_px, max(nose_length_px, 1e-6), 0.66)
-    out["philtrum_length"] = safe_div(abs(pts[LM_UPPER_LIP_OUTER][1] - subnasale_y),
-                                     face_height, 0.07)
-    out["nose_height_ratio"] = safe_div(nose_length_px, face_height, 0.34)
-    out["mouth_width_ratio"] = safe_div(mouth_width, max(pupil_distance, 1e-6), 1.5)
+    out["eye_size"] = round(safe_div(eye_len, face_width, 0.23), 3)
+    out["nose_width"] = round(safe_div(nose_w, face_width, 0.26), 3)
+    out["lip_width"] = round(safe_div(mouth_w, face_width, 0.39), 3)
+    nose_len = dist(pts[LM_NASION], pts[LM_SUBNASALE])
+    out["nose_length"] = round(safe_div(nose_len, face_width, 0.42), 3)
+    out["nasal_index"] = round(safe_div(nose_w, max(nose_len, 1e-6), 0.68), 3)
+    philtrum_h = abs(pts[LM_UPPER_LIP_OUTER][1] - subnasale_y)
+    out["philtrum_length"] = round(safe_div(philtrum_h, face_height, 0.07), 3)
+    out["nose_height_ratio"] = round(safe_div(nose_len, face_height, 0.33), 3)
+    out["mouth_width_ratio"] = round(safe_div(mouth_w, max(pupil_distance, 1e-6), 1.48), 3)
 
     out["_face_width"] = face_width
     out["_face_height"] = face_height
@@ -964,64 +991,52 @@ def frontal_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
     return out
 
 
-def vertical_symmetry_pct(pts: List[Tuple[float, float]], axis_top: Sequence[float],
-                          axis_bottom: Sequence[float], face_width: float) -> float:
-    """Compare mirrored distances of paired landmarks from the facial midline."""
-    ax, ay = axis_top
-    bx, by = axis_bottom
-    dx, dy = bx - ax, by - ay
-    norm = math.hypot(dx, dy)
-    if norm < 1e-9:
-        return 100.0
+def vertical_symmetry_pct(pts: Sequence[Sequence[float]], cx: float, face_width: float) -> float:
+    """Compare mirrored distances of paired landmarks from facial midline in aligned frame."""
     deviations: List[float] = []
     for left_idx, right_idx in SYMMETRY_PAIRS:
-        lp, rp = pts[left_idx], pts[right_idx]
-        d_left = ((lp[0] - ax) * dy - (lp[1] - ay) * dx) / norm
-        d_right = ((rp[0] - ax) * dy - (rp[1] - ay) * dx) / norm
-        deviations.append(abs(abs(d_left) - abs(d_right)))
+        d_left = abs(pts[left_idx][0] - cx)
+        d_right = abs(pts[right_idx][0] - cx)
+        deviations.append(abs(d_left - d_right))
     mean_dev = sum(deviations) / len(deviations)
-    return clamp(100.0 - (mean_dev / max(face_width, 1e-6)) * 420.0, 0.0, 100.0)
+    return clamp(100.0 - (mean_dev / max(face_width, 1.0)) * 280.0, 75.0, 100.0)
 
 
-def horizontal_symmetry_pct(pts: List[Tuple[float, float]], axis_top: Sequence[float],
-                            axis_bottom: Sequence[float], face_height: float) -> float:
-    """Compare the position of paired landmarks along the facial midline axis.
-
-    Projecting onto the midline direction makes horizontal symmetry invariant
-    to natural head roll (tilt) in the camera frame.
-    """
-    ax, ay = axis_top
-    bx, by = axis_bottom
-    dx, dy = bx - ax, by - ay
-    norm = math.hypot(dx, dy)
-    if norm < 1e-9:
-        ux, uy = 0.0, 1.0
-    else:
-        ux, uy = dx / norm, dy / norm
-
-    deviations = [abs((pts[l][0] - pts[r][0]) * ux + (pts[l][1] - pts[r][1]) * uy)
-                  for l, r in SYMMETRY_PAIRS]
+def horizontal_symmetry_pct(pts: Sequence[Sequence[float]], face_height: float) -> float:
+    """Compare horizontal height alignment of paired landmarks in aligned frame."""
+    deviations = [abs(pts[l][1] - pts[r][1]) for l, r in SYMMETRY_PAIRS]
     mean_dev = sum(deviations) / len(deviations)
-    return clamp(100.0 - (mean_dev / max(face_height, 1e-6)) * 480.0, 0.0, 100.0)
+    return clamp(100.0 - (mean_dev / max(face_height, 1.0)) * 320.0, 75.0, 100.0)
 
 
-def profile_metrics(pts: List[Tuple[float, float]]) -> Dict[str, float]:
+def profile_metrics(pts: Sequence[Sequence[float]]) -> Dict[str, float]:
     """Refine projection-sensitive measurements using the profile photo."""
     out: Dict[str, float] = {}
-    facial_convexity = angle_deg(pts[LM_GLABELLA], pts[LM_SUBNASALE], pts[LM_MENTON])
+    pog = pts[199] if len(pts) > 199 else pts[LM_MENTON]
+    facial_convexity = angle_deg(pts[LM_GLABELLA], pts[LM_SUBNASALE], pog)
     if facial_convexity < 135.0 or facial_convexity > 185.0:
         facial_convexity = 168.0
     out["facial_convexity"] = round(facial_convexity, 1)
     out["chin_projection"] = round(clamp(facial_convexity, 155.0, 180.0), 1)
+
     jaw_p = jaw_contour_analysis(pts)
-    gonial_l = angle_deg(pts[LM_TEMPLE_L], jaw_p["gonion_left"], pts[LM_MENTON])
-    gonial_r = angle_deg(pts[LM_TEMPLE_R], jaw_p["gonion_right"], pts[LM_MENTON])
-    out["gonial_angle"] = (gonial_l + gonial_r) / 2.0
-    out["ramus_ratio"] = safe_div(jaw_p["ramus_height"], max(jaw_p["jaw_body_len"], 1e-6), 0.7)
-    out["mandible_definition"] = 1.0 + clamp((136.0 - out["gonial_angle"]) / 26.0, 0.0, 1.0) * 0.9 * 0.75
+    gon_l = pts[132] if len(pts) > 132 else pts[LM_JAW_L_MID]
+    gon_r = pts[288] if len(pts) > 288 else pts[LM_JAW_R_MID]
+    gonial_l = angle_deg(pts[LM_TEMPLE_L], gon_l, pts[LM_MENTON])
+    gonial_r = angle_deg(pts[LM_TEMPLE_R], gon_r, pts[LM_MENTON])
+    valid_angles = [a for a in (gonial_l, gonial_r) if 105.0 <= a <= 145.0]
+    if valid_angles:
+        chosen_gonial = sum(valid_angles) / len(valid_angles)
+    else:
+        chosen_gonial = clamp((gonial_l + gonial_r) / 2.0, 115.0, 135.0)
+    out["gonial_angle"] = round(chosen_gonial, 1)
+    out["ramus_ratio"] = round(safe_div(jaw_p["ramus_height"], max(jaw_p["jaw_body_len"], 1e-6), 0.65), 3)
+    norm_gonial = clamp((135.0 - out["gonial_angle"]) / 22.0, 0.0, 1.0)
+    out["mandible_definition"] = round(1.0 + norm_gonial * 0.55, 3)
     return out
 
 
+# ---------------------------------------------------------------------------
 # Assembly
 # ---------------------------------------------------------------------------
 
@@ -1029,7 +1044,8 @@ def dimorphism_index(raw: Dict[str, float], gender: str,
                      bands: Dict[str, Tuple[float, float]]) -> float:
     """Composite masculinity/femininity alignment, expressed 0..100."""
     contributors = ("brow_ridge", "lip_thickness", "jaw_mass", "eye_aperture",
-                    "cheek_fullness", "brow_tilt", "gonial_angle", "chin_height_ratio", "lower_third")
+                    "cheek_fullness", "brow_tilt", "gonial_angle", "chin_height_ratio",
+                    "lower_third", "jaw_frontal_angle", "chin_width_ratio")
     scores: List[float] = []
     for key in contributors:
         if key not in raw or key not in bands:
@@ -1037,8 +1053,8 @@ def dimorphism_index(raw: Dict[str, float], gender: str,
         lo, hi = bands[key]
         scores.append(gaussian_score(raw[key], lo, hi))
     if not scores:
-        return 70.0
-    return clamp(sum(scores) / len(scores) * 10.0, 0.0, 100.0)
+        return 75.0
+    return round(clamp(sum(scores) / len(scores) * 10.0, 50.0, 100.0), 1)
 
 
 def category_summary(cat: str, metrics: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -1250,7 +1266,8 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
     bands = build_bands(gender, ethnicity)
 
     front_pts, blendshapes = detect_landmarks(front_image)
-    raw = frontal_metrics(front_pts)
+    aligned_pts, roll_deg = align_landmarks(front_pts)
+    raw = frontal_metrics(aligned_pts, raw_pts=front_pts)
 
     sources: Dict[str, str] = {key: "front" for key in raw}
     profile_used = False
@@ -1336,6 +1353,7 @@ def analyse(front_image: np.ndarray, profile_image: Optional[np.ndarray],
             "front_height": front_h,
             "face_width_px": round(raw.get("_face_width", 0.0), 1),
             "face_height_px": round(raw.get("_face_height", 0.0), 1),
+            "roll_deg": round(roll_deg, 2),
         },
         "landmarks": {
             "front": [[round(p[0] / max(front_w, 1), 5), round(p[1] / max(front_h, 1), 5)]

@@ -23,20 +23,20 @@
     interocular_ratio: [[133, 362], [33, 133]],
     eye_spacing_symmetry: [[10, 152], [33, 133], [263, 362]],
 
-    gonial_angle: [[127, 172], [172, 152], [356, 397], [397, 152]],
+    gonial_angle: [[127, 132], [132, 152], [356, 288], [288, 152]],
     cheekbone_prominence: [[234, 454], [127, 356]],
-    jaw_cheek_ratio: [[172, 397], [234, 454]],
-    jaw_frontal_angle: [[172, 152], [397, 152]],
-    chin_width_ratio: [[148, 377], [172, 397]],
-    mandible_definition: [[172, 397], [172, 152], [397, 152]],
-    ramus_ratio: [[127, 172], [172, 152]],
-    bigonial_width: [[172, 397], [10, 152]],
+    jaw_cheek_ratio: [[132, 288], [234, 454]],
+    jaw_frontal_angle: [[132, 152], [288, 152]],
+    chin_width_ratio: [[149, 378], [132, 288]],
+    mandible_definition: [[132, 288], [132, 152], [288, 152]],
+    ramus_ratio: [[127, 132], [132, 152]],
+    bigonial_width: [[132, 288], [10, 152]],
     chin_projection: [[9, 2], [2, 152]],
-    jaw_mass: [[172, 397], [2, 152]],
+    jaw_mass: [[132, 288], [2, 152]],
 
     brow_ridge: [[105, 159], [334, 386]],
     lip_thickness: [[0, 13], [14, 17], [61, 291]],
-    dimorphism_index: [[105, 159], [172, 397], [17, 152]],
+    dimorphism_index: [[105, 159], [132, 288], [17, 152]],
     brow_tilt: [[55, 46], [285, 276]],
     eye_aperture: [[159, 145], [386, 374]],
     cheek_fullness: [[205, 425], [234, 454]],
@@ -75,13 +75,6 @@
       { name: "Крупные глаза", value: 0.262, note: "выразительно" },
       { name: "Средний ориентир", value: 0.232, note: "баланс" },
       { name: "Узкие глаза", value: 0.205, note: "сдержанно" }
-    ],
-    skin_tone_ita: [
-      { name: "Очень светлая кожа", value: 55.0, note: "ITA > 55" },
-      { name: "Светлая", value: 41.0, note: "ITA 41–55" },
-      { name: "Средняя", value: 28.0, note: "ITA 28–41" },
-      { name: "Смуглая", value: 10.0, note: "ITA 10–28" },
-      { name: "Тёмная", value: -20.0, note: "ITA < 10" }
     ]
   };
 

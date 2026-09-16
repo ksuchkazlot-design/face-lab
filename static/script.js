@@ -95,7 +95,8 @@
 
   function fmt(value, digits) {
     var d = typeof digits === "number" ? digits : 2;
-    return Number(value).toFixed(d);
+    var num = Math.max(0, Number(value) || 0);
+    return num.toFixed(d);
   }
 
   function colorVar(color) {
@@ -788,21 +789,30 @@
     img.src = dataUrl;
   }
 
+  function dedupeHistory(list) {
+    var seenIds = {};
+    var out = [];
+    (list || []).forEach(function (item) {
+      if (!item) return;
+      var idKey = item.id || (item.generated_at ? "scan_" + item.generated_at : null);
+      if (idKey && seenIds[idKey]) return;
+      var isDup = out.some(function (prev) {
+        return Math.abs(prev.score - item.score) < 0.001 && Math.abs((prev.timestamp || 0) - (item.timestamp || 0)) < 45000;
+      });
+      if (isDup) return;
+      if (idKey) seenIds[idKey] = true;
+      out.push(item);
+    });
+    return out;
+  }
+
   function saveToHistory(data, thumbUrl) {
     if (!data) return;
     try {
-      var history = JSON.parse(localStorage.getItem("faceLabHistory") || "[]");
+      var rawHistory = JSON.parse(localStorage.getItem("faceLabHistory") || "[]");
+      var history = dedupeHistory(rawHistory);
       var currentScore = (data.overall && data.overall.score) || 0;
       var genAt = data.generated_at || Math.floor(Date.now() / 1000);
-
-      // Deduplicate: if the most recent entry has identical score and was created recently
-      if (history.length > 0) {
-        var latest = history[0];
-        if (latest.generated_at === genAt ||
-            (Math.abs(latest.score - currentScore) < 0.001 && Math.abs(Date.now() - (latest.timestamp || 0)) < 60000)) {
-          return;
-        }
-      }
 
       var scanItem = {
         id: "scan_" + genAt,
@@ -815,6 +825,7 @@
         })
       };
       history.unshift(scanItem);
+      history = dedupeHistory(history);
       if (history.length > 10) history = history.slice(0, 10);
       localStorage.setItem("faceLabHistory", JSON.stringify(history));
     } catch (e) {
@@ -830,6 +841,8 @@
     var history = [];
     try {
       history = JSON.parse(localStorage.getItem("faceLabHistory") || "[]");
+      history = dedupeHistory(history);
+      localStorage.setItem("faceLabHistory", JSON.stringify(history));
     } catch (e) {}
 
     if (!history.length) {
@@ -1492,20 +1505,20 @@
     interocular_ratio: [[133, 362], [33, 133]],
     eye_spacing_symmetry: [[10, 152], [33, 133], [263, 362]],
 
-    gonial_angle: [[127, 172], [172, 152], [356, 397], [397, 152]],
+    gonial_angle: [[127, 132], [132, 152], [356, 288], [288, 152]],
     cheekbone_prominence: [[234, 454], [127, 356]],
-    jaw_cheek_ratio: [[172, 397], [234, 454]],
-    jaw_frontal_angle: [[172, 152], [397, 152]],
-    chin_width_ratio: [[148, 377], [172, 397]],
-    mandible_definition: [[172, 397], [172, 152], [397, 152]],
-    ramus_ratio: [[127, 172], [172, 152]],
-    bigonial_width: [[172, 397], [10, 152]],
+    jaw_cheek_ratio: [[132, 288], [234, 454]],
+    jaw_frontal_angle: [[132, 152], [288, 152]],
+    chin_width_ratio: [[149, 378], [132, 288]],
+    mandible_definition: [[132, 288], [132, 152], [288, 152]],
+    ramus_ratio: [[127, 132], [132, 152]],
+    bigonial_width: [[132, 288], [10, 152]],
     chin_projection: [[9, 2], [2, 152]],
-    jaw_mass: [[172, 397], [2, 152]],
+    jaw_mass: [[132, 288], [2, 152]],
 
     brow_ridge: [[105, 159], [334, 386]],
     lip_thickness: [[0, 13], [14, 17], [61, 291]],
-    dimorphism_index: [[105, 159], [172, 397], [17, 152]],
+    dimorphism_index: [[105, 159], [132, 288], [17, 152]],
     brow_tilt: [[55, 46], [285, 276]],
     eye_aperture: [[159, 145], [386, 374]],
     cheek_fullness: [[205, 425], [234, 454]],
@@ -1793,18 +1806,18 @@
     if (key === "gonial_angle" || key === "jaw_frontal_angle" || key === "chin_projection" || (key.indexOf("angle") !== -1 && key !== "brow_tilt")) {
       var p1, vertex, p2;
       if (key === "gonial_angle") {
-        // Gonial Angle vertex is at the Gonion (jaw angle corner 172)
+        // Gonial Angle vertex is at the Gonion (jaw angle corner 132)
         p1 = pt(127); // upper ramus / condyle
-        vertex = pt(172); // gonion
+        vertex = pt(132); // gonion
         p2 = pt(152); // menton / chin
       } else if (key === "jaw_frontal_angle") {
-        // Jaw Frontal Angle vertex is at the Chin (menton 152) between gonions 172 and 397
-        p1 = pt(172); vertex = pt(152); p2 = pt(397);
+        // Jaw Frontal Angle vertex is at the Chin (menton 152) between gonions 132 and 288
+        p1 = pt(132); vertex = pt(152); p2 = pt(288);
       } else if (key === "chin_projection") {
-        // Chin Projection: profile facial angle Glabella (9) -> Subnasale (2) -> Menton (152)
-        p1 = pt(9); vertex = pt(2); p2 = pt(152);
+        // Chin Projection: profile facial angle Glabella (9) -> Subnasale (2) -> Pogonion (199 or 152)
+        p1 = pt(9); vertex = pt(2); p2 = (pts.length > 199 && pt(199)) ? pt(199) : pt(152);
       } else {
-        p1 = pt(172); vertex = pt(152); p2 = pt(397);
+        p1 = pt(132); vertex = pt(152); p2 = pt(288);
       }
 
       // Arms
@@ -1871,7 +1884,7 @@
 
     } else if (key === "ramus_ratio") {
       var condyle = pt(127);
-      var gonion = pt(172);
+      var gonion = pt(132);
       var chin = pt(152);
 
       // Ramus segment
@@ -2044,7 +2057,7 @@
       ctx.stroke();
 
       // Horizontal symmetry checks
-      var pairsSym = [ [33, 263], [129, 358], [61, 291], [172, 397] ];
+      var pairsSym = [ [33, 263], [129, 358], [61, 291], [132, 288] ];
       ctx.lineWidth = 1.5;
       ctx.strokeStyle = "rgba(255, 255, 255, 0.8)";
       pairsSym.forEach(function (pair) {
@@ -3273,9 +3286,18 @@
         qsa("#analysisCatTabs .fiq-pill-tab").forEach(function (b) {
           b.classList.toggle("is-active", b === btn);
         });
+        if (catKey === "harmony" || catKey === "dimorphism") {
+          var tf = $("analysisToggleFront");
+          if (tf && !tf.classList.contains("is-active")) {
+            tf.click();
+            return;
+          }
+        }
         var cat = catByKey(catKey);
         var tagEl = $("analysisPhotoTag");
-        if (tagEl && cat) tagEl.textContent = "Front " + cat.title;
+        var toggleSide = $("analysisToggleSide");
+        var isSide = toggleSide && toggleSide.classList.contains("is-active");
+        if (tagEl && cat) tagEl.textContent = (isSide ? "Side " : "Front ") + cat.title;
         if (state.analysis) renderAnalysisGroups(state.analysis);
       });
     });
@@ -3297,13 +3319,22 @@
       });
 
       toggleSide.addEventListener("click", function () {
+        if (currentAnalysisCat === "harmony" || currentAnalysisCat === "dimorphism") {
+          var tabAng = document.querySelector("#analysisCatTabs [data-cat='angularity']");
+          if (tabAng) {
+            currentAnalysisCat = "angularity";
+            qsa("#analysisCatTabs .fiq-pill-tab").forEach(function (b) {
+              b.classList.toggle("is-active", b === tabAng);
+            });
+          }
+        }
         toggleSide.classList.add("is-active");
         toggleFront.classList.remove("is-active");
         var photoStage = $("analysisPhotoStage");
         if (photoStage) {
           photoStage.src = state.profileData || state.frontData || "";
         }
-        var cat = catByKey(currentAnalysisCat) || catByKey("harmony");
+        var cat = catByKey(currentAnalysisCat) || catByKey("angularity");
         var tagEl = $("analysisPhotoTag");
         if (tagEl && cat) tagEl.textContent = "Side " + cat.title;
         if (state.analysis) renderAnalysisGroups(state.analysis);

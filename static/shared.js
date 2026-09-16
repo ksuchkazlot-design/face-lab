@@ -62,7 +62,8 @@
 
   function fmt(value, digits) {
     var d = typeof digits === "number" ? digits : 2;
-    return Number(value).toFixed(d);
+    var num = Math.max(0, Number(value) || 0);
+    return num.toFixed(d);
   }
 
   function colorVar(color) {
